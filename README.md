@@ -1,127 +1,174 @@
-![Package Icon](/addons/maaacks_game_template/media/game-icon-black-transparent-256x256.png)  
+"VOIDCRAWL Game Icon" (media/game-icon.png)
 
-# Godot Game Template
-![GitHub commit activity](https://img.shields.io/github/commit-activity/m/Maaack/Godot-Game-Template)
-![GitHub Release Date](https://img.shields.io/github/release-date/Maaack/Godot-Game-Template)
-[![Discord members](https://img.shields.io/discord/772191827570720798.svg?label=&logo=discord&logoColor=ffffff)](https://discord.gg/AyZrJh5AMp)  
+VOIDCRAWL — Mobile Dungeon Adventure
 
-This template has a main menu, options menus, pause menu, credits, scene loader, extra tools, and an example game scene.  
+"Godot Engine" (https://img.shields.io/badge/Godot-4.x-478CBF?logo=godotengine&logoColor=white)
+"Platform" (https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)
+"Genre" (https://img.shields.io/badge/Genre-3D_Action_RPG-8B5CF6)
+"Development Status" (https://img.shields.io/badge/Status-In_Development-orange)
+"GitHub commit activity" (https://img.shields.io/github/commit-activity/m/YOUR_USERNAME/YOUR_REPOSITORY)
 
-For *Godot 4.7* (4.4+ compatible)
+VOIDCRAWL is an original 3D dungeon-crawling adventure being developed for Android using Godot Engine.
 
-[Example on itch.io](https://maaack.itch.io/godot-game-template)  
+Explore mysterious dungeons, fight dangerous creatures, discover valuable loot, upgrade your equipment, and challenge powerful bosses in a dark fantasy world.
 
-## Objective
+Inspired by the dungeon-crawling genre, VOIDCRAWL aims to deliver an accessible mobile action RPG with original characters, environments, combat mechanics, and a distinctive black-and-purple visual identity.
 
-Setup menus and accessibility features in about 15 minutes.
+Objective
 
-The template can be the start of a new project, or plug into an existing one. It is game agnostic (2D or 3D) and can work with multiple target resolutions, up to 4k and down to 640x360. It's meant to cover the needs for a typical game jam, while remaining scalable and extensible enough to support commercial games.
+Create a complete, playable Android dungeon crawler with responsive touchscreen controls, engaging combat, dungeon exploration, equipment progression, and challenging boss encounters.
 
-### Minimal
+The project prioritizes mobile performance, scalable gameplay systems, reusable environments, and an automated Android build workflow.
 
-Users that want a minimal set of features can try *[Maaack's Minimal Game Template](https://github.com/Maaack/Godot-Minimal-Game-Template)* or other options from the [plugin suite](/addons/maaacks_game_template/docs/PluginSuite.md).  
+Features
 
-## Installation
+Gameplay
 
-*Maaack's Game Template* is available in both the *Godot Asset Library* and the *Godot Asset Store*. It is available as both a template and a plugin, meaning it can be used to start a new project, or added to an existing project.
+- Third-person or isometric 3D exploration.
+- Touchscreen movement and combat controls.
+- Melee and ranged combat.
+- Multiple enemy types and combat encounters.
+- Boss battles with unique attack patterns.
+- Health, damage, healing, and character progression.
+- Loot collection, equipment, and inventory management.
+- Dungeon objectives, treasure rooms, and rewards.
 
-### New Project
-While in the *Godot Project Manager*:
+World and Exploration
 
-1.  Go to the **Asset Store** tab.
-2.  Search for "Maaack's Game Template".
-3.  Click on the result to open the template details.
-4.  Click to **Download**.
-5.  Give the project a new name and destination.
-6.  Click to **Install & Edit**.
-7.  Continue with the [Basic Setup](/addons/maaacks_game_template/docs/BasicSetup.md).
+- Stylized blocky 3D environments.
+- Dark fantasy dungeons, caves, and ancient ruins.
+- Reusable room layouts and procedural dungeon generation.
+- Hidden locations, treasure chests, and environmental details.
+- Original creatures, equipment, and world design.
 
-### Existing Project
-While editing a project in *Godot*:
+Mobile Experience
 
-1.  Go to the **Asset Store** tab.
-2.  Search for "Maaack's Game Template Addon".
-3.  Click on the result to open the plugin details.
-4.  Click to **Download**.
-5.  Check that contents are getting installed to `addons/` and if there are any conflicts.  
-Conflicts that are safe to ignore:
-    -  `addons/plugin_updater/`
-    -  `addons/clean_copy_examples/`
-    -  `addons/maaacks_scene_loader/`
-    -  `addons/maaacks_music_controller/`
-    -  `addons/maaacks_ui_sound_controller/`
-6.  Click to **Install**.
-7.  Reload the project (you may see errors before you do this).
-8.  Enable the plugin(s) from the **Project > Project Settings > Plugins** tab.  
-    1.  Optionally, enable the following:
-        -  *Plugin Updater*
-        -  *Maaack's Scene Loader*
-        -  *Maaack's Music Controller*
-        -  *Maaack's UI Sound Controller*
-    2.  Enable *Maaack's Game Template*.
-    3.  If it's enabled for the first time, the setup wizard will start.  
-        Close the window behind it and complete the setup wizard.  
-9.  Continue with the [Basic Setup](/addons/maaacks_game_template/docs/BasicSetup.md).
+- Android-first development.
+- Touch-friendly interface and HUD.
+- Adjustable graphics settings where practical.
+- Performance-conscious rendering.
+- Save and load support.
+- Installable APK builds for testing.
 
-## Usage
+Features listed above are project goals. Refer to the current build and roadmap to determine what is implemented and tested.
 
-[Basic Setup](/addons/maaacks_game_template/docs/BasicSetup.md) is done through the setup wizard at **Project > Tools > Run Maaack's Game Template Setup...**.  
+Installation
 
-As part of setup, example scenes are copied out of `/addons/` into a desired folder (project root by default). These can be edited to fit requirements.
+Android APK
 
-### More Documentation
+When a tested Android build becomes available:
 
-[Feature List](/addons/maaacks_game_template/docs/FeatureList.md)  
-[Main Menu Setup](/addons/maaacks_game_template/docs/MainMenuSetup.md)  
-[Options Menu Setup](/addons/maaacks_game_template/docs/OptionsMenuSetup.md)  
-[Game Scene Setup](/addons/maaacks_game_template/docs/GameSceneSetup.md)  
-[Updating Credits](/addons/maaacks_game_template/docs/UpdatingCredits.md)  
-[Blending Music](/addons/maaacks_music_controller/docs/BlendingMusic.md)  
-[Adding UI Sound Effects](/addons/maaacks_ui_sound_controller/docs/AddingUISFX.md)  
-[Loading Scenes](/addons/maaacks_scene_loader/docs/LoadingScenes.md)  
-[Input Icon Mapping](/addons/maaacks_game_template/docs/InputIconMapping.md)  
-[Joypad Inputs](/addons/maaacks_game_template/docs/JoypadInputs.md)  
-[Game Saving](/addons/maaacks_game_template/docs/GameSaving.md)  
-[How Parts Work](/addons/maaacks_game_template/docs/HowPartsWork.md)  
-[Moving Files](/addons/maaacks_game_template/docs/MovingFiles.md)  
-[Uploading to itch.io](/addons/maaacks_game_template/docs/UploadingToItchIo.md)  
-[Build and Publish Your Game Using CICD](/addons/maaacks_game_template/docs/BuildAndPublish.md)  
-[Automatic Updating](/addons/maaacks_game_template/docs/AutomaticUpdating.md)  
-[Exhibiting Your Game](/addons/maaacks_game_template/docs/Exhibiting.md)  
+1. Open the repository's Releases page.
+2. Select a release containing an APK.
+3. Download the APK to your Android device.
+4. Allow installation from the relevant source if Android requests permission.
+5. Install and launch VOIDCRAWL.
 
-## Media
+"View Releases" (../../releases)
 
-### Videos
+If no release is available yet, the game has not been published as a downloadable release.
 
-[![Quick Intro Video](https://img.youtube.com/vi/U9CB3vKINVw/hqdefault.jpg)](https://youtu.be/U9CB3vKINVw)  
-[More Videos](/addons/maaacks_game_template/docs/Videos.md)
+Development Build
 
-### Screenshots
+When GitHub Actions is configured to export Android builds:
 
-![Main Menu](/addons/maaacks_game_template/media/screenshot-6-main-menu-5.png)  
-![Key Rebinding](/addons/maaacks_game_template/media/screenshot-6-input-list-8.png)  
-![Audio Controls](/addons/maaacks_game_template/media/screenshot-6-audio-options-2.png)  
-[More Screenshots](/addons/maaacks_game_template/docs/Screenshots.md)  
+1. Open the repository's Actions tab.
+2. Select a successful Android build workflow.
+3. Open the completed workflow run.
+4. Download the APK from its Artifacts section.
+5. Install the APK and test the game.
 
-## Featured Games
+Running the Godot Project
 
-| HeartFix Express | Baking Godium | Rent Seek Kill |  
-| :-------:| :-------: | :-------: |
-| ![HeartFix Express](/addons/maaacks_game_template/media/thumbnail-game-heartfix-express.png) | ![Baking Godium](/addons/maaacks_game_template/media/thumbnail-game-baking-godium.png) | ![Rent-Seek-Kill](/addons/maaacks_game_template/media/thumbnail-game-rent-seek-kill.png) |
-|  [Find on Steam](https://store.steampowered.com/app/3983290/HeartFix_Express_Demo/)  | [Play on itch.io](https://maaack.itch.io/baking-godium) | [Play on itch.io](https://xandruher.itch.io/rent-seek-kill)  |
+1. Install a compatible version of Godot Engine 4.
+2. Clone or download the repository.
+3. Open the project using Godot's Project Manager.
+4. Import the project resources.
+5. Open the main scene and run the project.
 
+Android export requires compatible export templates and Android build dependencies.
 
-[All Shared Games](/addons/maaacks_game_template/docs/GamesMade.md)  
+Development Roadmap
 
+- [ ] Establish a working Godot project.
+- [ ] Implement player movement and camera controls.
+- [ ] Add mobile touchscreen controls.
+- [ ] Create the first playable dungeon.
+- [ ] Implement enemies and combat.
+- [ ] Add health, healing, and damage feedback.
+- [ ] Implement loot and inventory systems.
+- [ ] Add equipment progression.
+- [ ] Create a complete boss encounter.
+- [ ] Implement saving and loading.
+- [ ] Improve visual effects and audio.
+- [ ] Optimize for Android devices.
+- [ ] Configure automated APK builds.
+- [ ] Publish the first playable release.
 
-## Community
+Technology
 
-Join the [Discord server](https://discord.gg/AyZrJh5AMp) and share your work with others. It's also a space for getting or giving feedback, and asking for help. 
+Component| Technology
+Engine| Godot Engine 4
+Programming| GDScript
+Platform| Android
+Version Control| Git and GitHub
+Build Automation| GitHub Actions
+Game Style| 3D action-adventure
 
-## Links
-[Attribution](/addons/maaacks_game_template/ATTRIBUTION.md)  
-[License](/addons/maaacks_game_template/LICENSE.txt)  
-[Godot Asset Store - Template](https://store.godotengine.org/asset/maaack/maaacks-game-template/)  
-[Godot Asset Store - Addon](https://store.godotengine.org/asset/maaack/maaacks-game-template-addon/)  
-[Godot Asset Library - Template](https://godotengine.org/asset-library/asset/2703)  
-[Godot Asset Library - Plugin](https://godotengine.org/asset-library/asset/2709)  
+Documentation
+
+Documentation will be expanded as the project develops.
+
+- "Gameplay Overview" (docs/Gameplay.md)
+- "Controls" (docs/Controls.md)
+- "Combat System" (docs/Combat.md)
+- "Inventory and Equipment" (docs/Inventory.md)
+- "Dungeon Generation" (docs/Dungeons.md)
+- "Android Builds" (docs/AndroidBuilds.md)
+- "Development Roadmap" (docs/Roadmap.md)
+
+Documentation links become active when the corresponding files are added to the repository.
+
+Media
+
+Screenshots
+
+Screenshots of the actual playable game will be added here as development progresses.
+
+Main Menu| Dungeon Gameplay| Boss Encounter
+Coming soon| Coming soon| Coming soon
+
+Contributing
+
+Ideas, bug reports, and constructive feedback are welcome.
+
+When reporting a bug, include the following where possible:
+
+- Steps to reproduce the problem.
+- Expected behavior.
+- Actual behavior.
+- Relevant error logs or screenshots.
+- Android device and game build information.
+
+License
+
+The project license will be specified in the repository.
+
+Third-party assets, plugins, and dependencies must retain their applicable licenses.
+
+Links
+
+- "Source Code" (../../)
+- "Issues" (../../issues)
+- "Releases" (../../releases)
+- "GitHub Actions" (../../actions)
+- "Godot Engine" (https://godotengine.org/)
+- "Godot Android Export Documentation" (https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_android.html)
+
+Infinity Studios
+
+VOIDCRAWL — Enter the unknown.
+
+Explore deeper. Discover hidden treasures. Conquer the darkness.
+
+An original mobile dungeon adventure in development.

@@ -73,7 +73,7 @@ static func roll_rarity(rng: RandomNumberGenerator, luck: float = 0.0) -> int:
 	return 0
 
 ## Generate an item. rarity/slot = -1 means random.
-static func generate(rng: RandomNumberGenerator, ilvl: int, rarity: int = -1, slot: int = -1, luck: float = 0.0, uid: int = 0) -> Dictionary:
+static func generate(rng: RandomNumberGenerator, ilvl: int, rarity: int = -1, slot: int = -1, luck: float = 0.0, uid: int = 0, force_base: String = "") -> Dictionary:
 	if rarity < 0:
 		rarity = roll_rarity(rng, luck)
 	rarity = clampi(rarity, 0, 4)
@@ -83,6 +83,9 @@ static func generate(rng: RandomNumberGenerator, ilvl: int, rarity: int = -1, sl
 		slot = 0 if sr < 0.32 else (1 if sr < 0.55 else (2 if sr < 0.8 else 3))
 	var ids := base_ids_for_slot(slot)
 	var base_id: String = ids[rng.randi_range(0, ids.size() - 1)]
+	if force_base != "" and BASES.has(force_base):
+		base_id = force_base
+		slot = int(BASES[force_base]["slot"])
 	var b: Dictionary = BASES[base_id]
 	var rm: float = VCDefs.RARITY_STAT_MULT[rarity]
 	var lm := _level_mult(ilvl)

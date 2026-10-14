@@ -126,6 +126,24 @@ func derived() -> Dictionary:
 	d["power"] = int(round(avg * float(d["dmg_mult"]) * (1.0 + float(d["crit"])) / maxf(float(t["interval"]), 0.1) + float(d["max_hp"]) / 10.0 + float(d["armor"])))
 	return d
 
+## Derived stats as they would be if `item` were equipped (does not change anything).
+func preview_derived(item: Dictionary) -> Dictionary:
+	var slot: int = int(item["slot"])
+	var had := equipment.has(slot)
+	var old: Dictionary = equipment.get(slot, {})
+	equipment[slot] = item
+	var d := derived()
+	if had:
+		equipment[slot] = old
+	else:
+		equipment.erase(slot)
+	return d
+
+## Average damage per second (crits included) for a derived-stats dictionary.
+static func dps_of(d: Dictionary) -> float:
+	var avg := (float(d["dmg_min"]) + float(d["dmg_max"])) * 0.5
+	return avg * float(d["dmg_mult"]) * (1.0 + float(d["crit"]) * 0.75) / maxf(float(d["interval"]), 0.1)
+
 func to_dict() -> Dictionary:
 	var eq := {}
 	for slot in equipment:

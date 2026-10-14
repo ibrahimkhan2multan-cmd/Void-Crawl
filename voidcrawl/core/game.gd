@@ -54,6 +54,11 @@ func _register_input() -> void:
 		"vc_sprint": [KEY_SHIFT],
 		"vc_pause": [KEY_ESCAPE, KEY_P],
 		"vc_inventory": [KEY_I, KEY_TAB],
+		"vc_interact": [KEY_E, KEY_F],
+		"move_left": [KEY_A, KEY_LEFT],
+		"move_right": [KEY_D, KEY_RIGHT],
+		"move_forward": [KEY_W, KEY_UP],
+		"move_backward": [KEY_S, KEY_DOWN],
 	}
 	for action in map:
 		if not InputMap.has_action(action):

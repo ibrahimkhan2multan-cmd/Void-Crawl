@@ -1,0 +1,582 @@
+class_name VCPlayer
+extends CharacterBody3D
+## The Voidwalker. Reads VCInput, owns combat state, and pulls every number from
+## VCProfile.derived() so equipment, attributes and level change real gameplay.
+
+signal died
+signal damaged(amount, hp, max_hp)
+signal healed(amount)
+signal attacked
+signal dodged
+signal ability_used
+signal potion_used
+
+enum S { IDLE, ATTACK, DODGE, DEAD }
+
+const HIT_RADIUS := 0.5
+const CRIT_MULT := 1.75
+const DODGE_TIME := 0.38
+const DODGE_IFRAMES := 0.32
+const DODGE_CD := 0.75
+const NOVA_BASE_CD := 9.0
+const NOVA_RADIUS := 5.4
+const POTION_CD := 1.2
+
+var world: Node = null
+var profile: VCProfile
+var stats: Dictionary = {}
+var hp := 100.0
+var max_hp := 100
+var state: int = S.IDLE
+var hit_radius := HIT_RADIUS
+var facing := 0.0                    # yaw radians (0 = -Z)
+var cam_yaw := 0.0                   # camera yaw, used to turn joystick into world movement
+var invuln := 0.0
+var combo := 0
+var combo_timer := 0.0
+var dodge_cd := 0.0
+var nova_cd := 0.0
+var potion_cd := 0.0
+var attack_cd := 0.0
+var god_mode := false                # tests / debug only
+
+var _attack_t := 0.0
+var _attack_total := 0.4
+var _attack_hit_at := 0.16
+var _attack_hit_done := false
+var _attack_mult := 1.0
+var _attack_dir := Vector3.FORWARD
+var _dodge_t := 0.0
+var _dodge_dir := Vector3.FORWARD
+var _knock := Vector3.ZERO
+var _buffered_attack := 0.0
+var _heal_pool := 0.0
+var _anim_t := 0.0
+var _flash := 0.0
+var _coll: CollisionShape3D
+
+# rig
+var rig: Node3D
+var _torso: MeshInstance3D
+var _head: MeshInstance3D
+var _hood: MeshInstance3D
+var _arm_l: Node3D
+var _arm_r: Node3D
+var _leg_l: Node3D
+var _leg_r: Node3D
+var _weapon_root: Node3D
+var _cape: MeshInstance3D
+var _helm_part: MeshInstance3D
+var _parts: Array = []
+var _light: OmniLight3D
+
+func _ready() -> void:
+	collision_layer = VCDefs.L_PLAYER
+	collision_mask = VCDefs.L_WORLD | VCDefs.L_PROP
+	motion_mode = CharacterBody3D.MOTION_MODE_FLOATING
+	_coll = CollisionShape3D.new()
+	var cap := CapsuleShape3D.new()
+	cap.radius = 0.42
+	cap.height = 1.5
+	_coll.shape = cap
+	_coll.position = Vector3(0, 0.8, 0)
+	add_child(_coll)
+	_build_rig()
+	_light = OmniLight3D.new()
+	_light.light_color = Color(0.75, 0.55, 1.0)
+	_light.light_energy = 0.9
+	_light.omni_range = 7.0
+	_light.position = Vector3(0, 2.4, 0.6)
+	add_child(_light)
+	name = "Player"
+
+func bind(p: VCProfile) -> void:
+	profile = p
+	refresh_stats(true)
+	refresh_visuals()
+
+func is_alive() -> bool:
+	return state != S.DEAD
+
+# ------------------------------------------------------------------- stats
+func refresh_stats(full_heal: bool = false) -> void:
+	var old_max := max_hp
+	stats = profile.derived()
+	max_hp = int(stats["max_hp"])
+	if full_heal:
+		hp = float(max_hp)
+	else:
+		# keep the same missing-health, so equipping a helm gives real extra health
+		hp = clampf(hp + float(max_hp - old_max), 1.0, float(max_hp))
+
+func cooldown_fraction(which: String) -> float:
+	match which:
+		"dodge": return clampf(dodge_cd / DODGE_CD, 0.0, 1.0)
+		"ability": return clampf(nova_cd / (NOVA_BASE_CD * float(stats["cd_mult"])), 0.0, 1.0)
+		"heal": return clampf(potion_cd / POTION_CD, 0.0, 1.0)
+	return 0.0
+
+# ------------------------------------------------------------------ rig
+func _mk(parent: Node3D, size: Vector3, pos: Vector3, col: Color, em: float = 0.0) -> MeshInstance3D:
+	var mi := VCMats.part(parent, size, pos, col, em)
+	_parts.append(mi)
+	return mi
+
+func _build_rig() -> void:
+	rig = Node3D.new()
+	rig.name = "Rig"
+	add_child(rig)
+	var cloth := Color(0.2, 0.12, 0.34)
+	var skin := Color(0.78, 0.65, 0.58)
+	_leg_l = Node3D.new(); _leg_l.position = Vector3(-0.16, 0.62, 0); rig.add_child(_leg_l)
+	_leg_r = Node3D.new(); _leg_r.position = Vector3(0.16, 0.62, 0); rig.add_child(_leg_r)
+	_mk(_leg_l, Vector3(0.24, 0.62, 0.26), Vector3(0, -0.31, 0), Color(0.14, 0.1, 0.2))
+	_mk(_leg_r, Vector3(0.24, 0.62, 0.26), Vector3(0, -0.31, 0), Color(0.14, 0.1, 0.2))
+	_mk(_leg_l, Vector3(0.26, 0.14, 0.34), Vector3(0, -0.6, -0.04), Color(0.1, 0.08, 0.12))
+	_mk(_leg_r, Vector3(0.26, 0.14, 0.34), Vector3(0, -0.6, -0.04), Color(0.1, 0.08, 0.12))
+	_torso = _mk(rig, Vector3(0.62, 0.7, 0.36), Vector3(0, 0.98, 0), cloth)
+	_mk(rig, Vector3(0.66, 0.1, 0.4), Vector3(0, 0.66, 0), Color(0.55, 0.3, 0.9), 0.6)       # belt
+	_cape = _mk(rig, Vector3(0.58, 0.9, 0.08), Vector3(0, 0.95, 0.24), Color(0.14, 0.07, 0.24))
+	_head = _mk(rig, Vector3(0.42, 0.42, 0.42), Vector3(0, 1.58, 0), skin)
+	_hood = _mk(rig, Vector3(0.5, 0.5, 0.5), Vector3(0, 1.62, 0.05), Color(0.16, 0.09, 0.28))
+	_mk(rig, Vector3(0.34, 0.1, 0.05), Vector3(0, 1.58, -0.24), Color(0.8, 0.5, 1.0), 2.2)   # glowing eyes
+	_helm_part = _mk(rig, Vector3(0.5, 0.2, 0.5), Vector3(0, 1.84, 0.02), Color(0.6, 0.58, 0.68))
+	_arm_l = Node3D.new(); _arm_l.position = Vector3(-0.42, 1.28, 0); rig.add_child(_arm_l)
+	_arm_r = Node3D.new(); _arm_r.position = Vector3(0.42, 1.28, 0); rig.add_child(_arm_r)
+	_mk(_arm_l, Vector3(0.2, 0.62, 0.22), Vector3(0, -0.28, 0), cloth * 1.1)
+	_mk(_arm_r, Vector3(0.2, 0.62, 0.22), Vector3(0, -0.28, 0), cloth * 1.1)
+	_mk(_arm_l, Vector3(0.22, 0.16, 0.24), Vector3(0, -0.62, 0), skin)
+	_mk(_arm_r, Vector3(0.22, 0.16, 0.24), Vector3(0, -0.62, 0), skin)
+	_weapon_root = Node3D.new()
+	_weapon_root.position = Vector3(0, -0.62, -0.1)
+	_arm_r.add_child(_weapon_root)
+
+func refresh_visuals() -> void:
+	if profile == null:
+		return
+	for c in _weapon_root.get_children():
+		c.queue_free()
+	var wp: Dictionary = profile.equipment.get(VCDefs.Slot.WEAPON, {})
+	var kind := "fist"
+	var wcol := Color(0.8, 0.8, 0.9)
+	var rar := 0
+	if not wp.is_empty():
+		kind = String(VCItems.BASES[wp["base"]]["kind"])
+		wcol = VCItems.base_color(wp)
+		rar = int(wp["rarity"])
+	var glow := VCDefs.rarity_color(rar)
+	var em := 0.0 if rar < 2 else 1.2
+	match kind:
+		"sword":
+			VCMats.part(_weapon_root, Vector3(0.09, 0.12, 0.46), Vector3(0, 0, 0.1), Color(0.3, 0.2, 0.15))
+			VCMats.part(_weapon_root, Vector3(0.34, 0.07, 0.07), Vector3(0, 0, -0.14), Color(0.3, 0.3, 0.38))
+			VCMats.part(_weapon_root, Vector3(0.1, 0.05, 1.0), Vector3(0, 0, -0.68), wcol, em).material_override = VCMats.solid(wcol, em)
+		"axe":
+			VCMats.part(_weapon_root, Vector3(0.09, 0.09, 1.0), Vector3(0, 0, -0.2), Color(0.28, 0.19, 0.14))
+			VCMats.part(_weapon_root, Vector3(0.08, 0.5, 0.42), Vector3(0, 0.12, -0.72), wcol, em).material_override = VCMats.solid(wcol, em)
+		"dagger":
+			VCMats.part(_weapon_root, Vector3(0.08, 0.1, 0.26), Vector3(0, 0, 0.05), Color(0.3, 0.2, 0.15))
+			VCMats.part(_weapon_root, Vector3(0.07, 0.04, 0.56), Vector3(0, 0, -0.4), wcol, em).material_override = VCMats.solid(wcol, em)
+		"bow":
+			VCMats.part(_weapon_root, Vector3(0.06, 1.1, 0.08), Vector3(0, 0, -0.2), wcol, em).material_override = VCMats.solid(wcol, em)
+			VCMats.part(_weapon_root, Vector3(0.04, 0.5, 0.04), Vector3(0, 0.55, -0.1), wcol * 0.8).rotation.x = 0.7
+			VCMats.part(_weapon_root, Vector3(0.04, 0.5, 0.04), Vector3(0, -0.55, -0.1), wcol * 0.8).rotation.x = -0.7
+		_:
+			pass
+	# armour tint
+	var arm: Dictionary = profile.equipment.get(VCDefs.Slot.ARMOR, {})
+	if arm.is_empty():
+		_torso.material_override = VCMats.solid(Color(0.2, 0.12, 0.34))
+	else:
+		var ac := VCItems.base_color(arm).lerp(VCDefs.rarity_color(int(arm["rarity"])), 0.25)
+		_torso.material_override = VCMats.solid(ac, 0.2 if int(arm["rarity"]) >= 3 else 0.0)
+	var helm: Dictionary = profile.equipment.get(VCDefs.Slot.HELM, {})
+	_helm_part.visible = not helm.is_empty()
+	if not helm.is_empty():
+		_helm_part.material_override = VCMats.solid(VCItems.base_color(helm), 0.3 if int(helm["rarity"]) >= 3 else 0.0)
+	_light.light_color = Color(0.75, 0.55, 1.0).lerp(glow, 0.25)
+
+# ----------------------------------------------------------------- tick
+func _physics_process(delta: float) -> void:
+	if profile == null or world == null:
+		return
+	_anim_t += delta
+	dodge_cd = maxf(0.0, dodge_cd - delta)
+	nova_cd = maxf(0.0, nova_cd - delta)
+	potion_cd = maxf(0.0, potion_cd - delta)
+	attack_cd = maxf(0.0, attack_cd - delta)
+	invuln = maxf(0.0, invuln - delta)
+	_buffered_attack = maxf(0.0, _buffered_attack - delta)
+	if combo_timer > 0.0:
+		combo_timer -= delta
+		if combo_timer <= 0.0:
+			combo = 0
+	if _heal_pool > 0.0:
+		var h := minf(_heal_pool, float(max_hp) * 0.9 * delta)
+		_heal_pool -= h
+		hp = minf(hp + h, float(max_hp))
+	if _flash > 0.0:
+		_flash -= delta
+		if _flash <= 0.0:
+			_set_flash(false)
+	if state == S.DEAD:
+		_animate(delta, Vector2.ZERO)
+		return
+
+	var mv := VCInput.move_vector()
+	var dir := _screen_to_world(mv)
+	var accept_actions: bool = world.is_player_controllable()
+
+	if accept_actions:
+		if VCInput.take("dodge"):
+			_try_dodge(dir)
+		if VCInput.take("ability"):
+			_try_nova()
+		if VCInput.take("heal"):
+			_try_potion()
+		if VCInput.attack_held() or Input.is_action_just_pressed("vc_attack"):
+			_buffered_attack = 0.25
+	else:
+		_buffered_attack = 0.0
+
+	match state:
+		S.IDLE:
+			var spd: float = float(stats["move_speed"]) * (1.28 if VCInput.sprinting() and mv.length() > 0.5 else 1.0)
+			var target_v := dir * spd * minf(mv.length() * 1.15, 1.0)
+			velocity = velocity.lerp(target_v, clampf(delta * 16.0, 0.0, 1.0)) + _knock
+			if dir.length() > 0.1:
+				facing = lerp_angle(facing, atan2(-dir.x, -dir.z), clampf(delta * 18.0, 0.0, 1.0))
+			if _buffered_attack > 0.0 and attack_cd <= 0.0 and accept_actions:
+				_start_attack()
+		S.ATTACK:
+			_tick_attack(delta, dir)
+		S.DODGE:
+			_dodge_t -= delta
+			velocity = _dodge_dir * 11.5 * clampf(_dodge_t / DODGE_TIME + 0.35, 0.35, 1.0)
+			if _dodge_t <= 0.0:
+				state = S.IDLE
+	_knock = _knock.move_toward(Vector3.ZERO, 30.0 * delta)
+	velocity.y = 0.0
+	move_and_slide()
+	global_position.y = 0.0
+	_push_out_of_enemies()
+	_animate(delta, mv)
+
+func _screen_to_world(mv: Vector2) -> Vector3:
+	if mv.length() < 0.001:
+		return Vector3.ZERO
+	var v := Vector3(mv.x, 0.0, mv.y)
+	return v.rotated(Vector3.UP, cam_yaw).normalized() * minf(mv.length(), 1.0)
+
+func _push_out_of_enemies() -> void:
+	for e in world.enemies:
+		if not e.is_alive() or e.non_solid:
+			continue
+		var d: Vector3 = global_position - e.global_position
+		d.y = 0.0
+		var min_d: float = hit_radius * 0.7 + e.hit_radius * 0.7
+		var dl: float = d.length()
+		if dl < min_d and dl > 0.001:
+			global_position += d.normalized() * (min_d - dl) * 0.5
+
+# ---------------------------------------------------------------- attack
+func _weapon_interval() -> float:
+	return float(stats["interval"])
+
+func _pick_target() -> Dictionary:
+	# auto-aim: nearest enemy/breakable in a generous cone ahead, otherwise attack where you face
+	var reach: float = float(stats["range"]) + (4.0 if bool(stats["ranged"]) else 1.4)
+	var best = null
+	var best_score := 1e9
+	var fwd := Vector3(-sin(facing), 0, -cos(facing))
+	var move_dir := _screen_to_world(VCInput.move_vector())
+	if move_dir.length() > 0.3:
+		fwd = move_dir.normalized()
+	for list in [world.enemies, world.breakables]:
+		for t in list:
+			if not t.is_alive():
+				continue
+			var to_t: Vector3 = t.global_position - global_position
+			to_t.y = 0.0
+			var d := to_t.length()
+			if d > reach + t.hit_radius:
+				continue
+			var ang := rad_to_deg(fwd.angle_to(to_t.normalized())) if d > 0.05 else 0.0
+			if ang > 85.0 and d > 1.6:
+				continue
+			var score := d + ang * 0.02
+			if t is VCBreakable:
+				score += 2.0                # prefer enemies over crates
+			if score < best_score:
+				best_score = score
+				best = t
+	if best == null:
+		return {"dir": fwd, "target": null}
+	var dv: Vector3 = best.global_position - global_position
+	dv.y = 0.0
+	return {"dir": dv.normalized(), "target": best}
+
+func _start_attack() -> void:
+	var pick := _pick_target()
+	_attack_dir = pick["dir"]
+	facing = atan2(-_attack_dir.x, -_attack_dir.z)
+	var interval := _weapon_interval()
+	_attack_total = interval
+	_attack_hit_at = interval * 0.38
+	_attack_hit_done = false
+	var ranged: bool = bool(stats["ranged"])
+	if ranged:
+		_attack_mult = 1.0
+		combo = 0
+	else:
+		_attack_mult = [1.0, 1.0, 1.45][combo % 3]
+	_attack_t = 0.0
+	state = S.ATTACK
+	_buffered_attack = 0.0
+	world.play_sfx("shoot" if ranged else "swing", -4.0, 1.0 + 0.08 * float(combo % 3))
+	attacked.emit()
+
+func _tick_attack(delta: float, _dir: Vector3) -> void:
+	_attack_t += delta
+	var lunge := 0.0
+	if not bool(stats["ranged"]) and _attack_t < _attack_hit_at:
+		lunge = 3.2 * (1.0 - _attack_t / _attack_hit_at) + 1.0
+	velocity = _attack_dir * lunge + _knock
+	if not _attack_hit_done and _attack_t >= _attack_hit_at:
+		_attack_hit_done = true
+		_do_attack_hit()
+	if _attack_t >= _attack_total:
+		state = S.IDLE
+		if not bool(stats["ranged"]):
+			combo += 1
+			combo_timer = 0.9
+			if combo >= 3:
+				combo = 0
+				attack_cd = 0.12
+
+func _do_attack_hit() -> void:
+	var ranged: bool = bool(stats["ranged"])
+	if ranged:
+		var proj = world.get_projectile()
+		if proj != null:
+			var col := Color(0.4, 1.0, 0.9)
+			proj.fire(global_position + _attack_dir * 0.6, _attack_dir, 21.0, 0.0, false, col, 0.3, float(stats["range"]) / 21.0 + 0.1, 0, 1.0)
+		return
+	var arc_deg: float = float(stats["arc"]) * (1.25 if combo % 3 == 2 else 1.0)
+	var reach: float = float(stats["range"]) * (1.15 if combo % 3 == 2 else 1.0)
+	world.fx.slash(global_position, facing, reach, arc_deg, Color(0.85, 0.65, 1.0) if combo % 3 != 2 else Color(1.0, 0.8, 1.0))
+	var hits := 0
+	for t in _targets_in_cone(reach, arc_deg):
+		hit_target(t, _attack_mult, 3.5 if combo % 3 == 2 else 2.2)
+		hits += 1
+	if hits > 0:
+		world.camera_shake(0.12 + 0.05 * float(combo % 3))
+
+func _targets_in_cone(reach: float, arc_deg: float) -> Array:
+	var out: Array = []
+	var fwd := Vector3(-sin(facing), 0, -cos(facing))
+	for list in [world.enemies, world.breakables]:
+		for t in list:
+			if not t.is_alive():
+				continue
+			var to_t: Vector3 = t.global_position - global_position
+			to_t.y = 0.0
+			var d := to_t.length()
+			if d > reach + t.hit_radius:
+				continue
+			if d < 0.9:
+				out.append(t)
+				continue
+			if rad_to_deg(fwd.angle_to(to_t / d)) <= arc_deg * 0.5 + rad_to_deg(atan2(t.hit_radius, d)):
+				out.append(t)
+	return out
+
+## Roll damage for one hit on `target` and apply it. Returns the damage dealt.
+func hit_target(target: Node, mult: float, knock: float) -> float:
+	var lo: float = float(stats["dmg_min"])
+	var hi: float = float(stats["dmg_max"])
+	var dmg := randf_range(lo, hi) * float(stats["dmg_mult"]) * mult
+	var crit := randf() < float(stats["crit"])
+	if crit:
+		dmg *= CRIT_MULT
+	dmg = maxf(1.0, round(dmg))
+	var dealt: float = target.take_hit(dmg, global_position, crit, knock, self)
+	if dealt > 0.0:
+		var leech: float = float(stats["leech"])
+		if leech > 0.0 and target is VCEnemy:
+			hp = minf(hp + dealt * leech, float(max_hp))
+		world.on_player_hit(target, dealt, crit)
+	return dealt
+
+# ----------------------------------------------------------------- dodge
+func _try_dodge(dir: Vector3) -> void:
+	if state == S.DODGE or dodge_cd > 0.0 or state == S.DEAD:
+		return
+	_dodge_dir = dir if dir.length() > 0.1 else Vector3(-sin(facing), 0, -cos(facing))
+	_dodge_dir = _dodge_dir.normalized()
+	facing = atan2(-_dodge_dir.x, -_dodge_dir.z)
+	_dodge_t = DODGE_TIME
+	dodge_cd = DODGE_CD
+	invuln = maxf(invuln, DODGE_IFRAMES)
+	state = S.DODGE
+	world.play_sfx("dodge", -3.0)
+	world.fx.burst(global_position + Vector3(0, 0.2, 0), Color(0.6, 0.45, 0.9), 8, 2.5, 0.8)
+	VC.vibrate(15)
+	dodged.emit()
+
+# --------------------------------------------------------------- ability
+func _try_nova() -> void:
+	if nova_cd > 0.0 or state == S.DEAD or state == S.DODGE:
+		return
+	nova_cd = NOVA_BASE_CD * float(stats["cd_mult"])
+	var avg: float = (float(stats["dmg_min"]) + float(stats["dmg_max"])) * 0.5
+	var mult: float = 2.3 * float(stats["ability_mult"])
+	world.fx.ring(global_position, NOVA_RADIUS, Color(0.75, 0.4, 1.0), 0.5)
+	world.fx.ring(global_position, NOVA_RADIUS * 0.6, Color(1.0, 0.8, 1.0), 0.35)
+	world.fx.burst(global_position + Vector3(0, 0.5, 0), Color(0.8, 0.5, 1.0), 26, 8.0, 1.3)
+	world.play_sfx("ability")
+	world.camera_shake(0.45)
+	VC.vibrate(40)
+	var n := 0
+	for list in [world.enemies, world.breakables]:
+		for t in list.duplicate():
+			if not t.is_alive():
+				continue
+			var d: float = Vector2(t.global_position.x - global_position.x, t.global_position.z - global_position.z).length()
+			if d <= NOVA_RADIUS + t.hit_radius:
+				var lo: float = float(stats["dmg_min"])
+				var hi: float = float(stats["dmg_max"])
+				var dmg := maxf(1.0, round(randf_range(lo, hi) * float(stats["dmg_mult"]) * mult))
+				var dealt: float = t.take_hit(dmg, global_position, false, 7.0, self)
+				if dealt > 0.0:
+					world.on_player_hit(t, dealt, false)
+					if t is VCEnemy:
+						t.stun(0.9)
+					n += 1
+	invuln = maxf(invuln, 0.25)
+	ability_used.emit()
+
+# ---------------------------------------------------------------- potion
+func _try_potion() -> void:
+	if potion_cd > 0.0 or state == S.DEAD:
+		return
+	if profile.potions <= 0 or hp >= float(max_hp) - 0.5:
+		return
+	profile.potions -= 1
+	potion_cd = POTION_CD
+	var amt := float(max_hp) * 0.5
+	_heal_pool += amt
+	world.fx.number(global_position, "+%d" % int(amt), VCDefs.COL_GOOD, false)
+	world.fx.burst(global_position + Vector3(0, 1.0, 0), VCDefs.COL_GOOD, 14, 3.0, 0.9)
+	world.play_sfx("heal")
+	healed.emit(amt)
+	potion_used.emit()
+
+func heal(amount: float, silent: bool = false) -> void:
+	var before := hp
+	hp = minf(hp + amount, float(max_hp))
+	if not silent and hp > before:
+		world.fx.number(global_position, "+%d" % int(hp - before), VCDefs.COL_GOOD)
+	healed.emit(hp - before)
+
+# --------------------------------------------------------------- damage
+func take_damage(amount: float, from_pos: Vector3, ignore_armor: bool = false) -> bool:
+	if state == S.DEAD or invuln > 0.0 or god_mode:
+		return false
+	var armor: float = float(stats["armor"])
+	var red := 0.0 if ignore_armor else armor / (armor + 45.0)
+	var dmg := maxf(1.0, round(amount * (1.0 - red)))
+	hp -= dmg
+	invuln = 0.4
+	_flash = 0.1
+	_set_flash(true)
+	var away := global_position - from_pos
+	away.y = 0.0
+	if away.length() > 0.01:
+		_knock = away.normalized() * 5.5
+	world.fx.number(global_position, str(int(dmg)), VCDefs.COL_BAD, false)
+	world.fx.burst(global_position + Vector3(0, 1.0, 0), Color(1.0, 0.3, 0.4), 10, 4.0, 0.9)
+	world.play_sfx("hurt", -2.0)
+	world.camera_shake(0.35)
+	world.on_player_hurt(dmg)
+	VC.vibrate(35)
+	damaged.emit(dmg, hp, max_hp)
+	if hp <= 0.0:
+		hp = 0.0
+		_die()
+	return true
+
+func _die() -> void:
+	state = S.DEAD
+	velocity = Vector3.ZERO
+	world.play_sfx("defeat")
+	died.emit()
+
+func apply_knock(v: Vector3) -> void:
+	_knock += v
+
+func revive_at(pos: Vector3) -> void:
+	global_position = Vector3(pos.x, 0, pos.z)
+	state = S.IDLE
+	refresh_stats(true)
+	invuln = 1.5
+	rig.rotation = Vector3.ZERO
+	rig.position = Vector3.ZERO
+	combo = 0
+	velocity = Vector3.ZERO
+	_knock = Vector3.ZERO
+
+# ---------------------------------------------------------------- visuals
+func _set_flash(on: bool) -> void:
+	for p in _parts:
+		var mi: MeshInstance3D = p
+		if on:
+			if not mi.has_meta("orig"):
+				mi.set_meta("orig", mi.material_override)
+			mi.material_override = VCMats.flash_overlay()
+		elif mi.has_meta("orig"):
+			mi.material_override = mi.get_meta("orig")
+			mi.remove_meta("orig")
+
+func _animate(delta: float, mv: Vector2) -> void:
+	rig.rotation.y = lerp_angle(rig.rotation.y, facing, clampf(delta * 22.0, 0.0, 1.0))
+	var speed := Vector2(velocity.x, velocity.z).length()
+	var run := clampf(speed / 6.0, 0.0, 1.5)
+	var swing := sin(_anim_t * 12.0) * 0.9 * run
+	match state:
+		S.DEAD:
+			rig.rotation.x = lerpf(rig.rotation.x, -PI * 0.5, clampf(delta * 6.0, 0.0, 1.0))
+			rig.position.y = lerpf(rig.position.y, 0.35, clampf(delta * 6.0, 0.0, 1.0))
+		S.DODGE:
+			var k := 1.0 - _dodge_t / DODGE_TIME
+			rig.rotation.x = -k * TAU
+			rig.position.y = sin(k * PI) * 0.25 - 0.15
+			_leg_l.rotation.x = 0.0
+			_leg_r.rotation.x = 0.0
+		S.ATTACK:
+			rig.rotation.x = 0.0
+			rig.position.y = 0.0
+			var k2 := clampf(_attack_t / _attack_total, 0.0, 1.0)
+			if bool(stats["ranged"]):
+				_arm_r.rotation.x = -1.4
+				_arm_l.rotation.x = -1.2 + sin(k2 * PI) * 0.3
+			else:
+				var wind := 1.0 - clampf(_attack_t / maxf(_attack_hit_at, 0.01), 0.0, 1.0)
+				var side := -1.0 if combo % 2 == 0 else 1.0
+				_arm_r.rotation.x = lerpf(-2.4, 0.5, smoothstep(0.0, 1.0, k2 * 1.6)) if k2 < 0.6 else lerpf(0.5, 0.0, (k2 - 0.6) / 0.4)
+				_arm_r.rotation.z = side * 0.5 * (1.0 - k2) + wind * 0.2
+				_arm_l.rotation.x = -0.5
+			_leg_l.rotation.x = 0.3
+			_leg_r.rotation.x = -0.3
+		_:
+			rig.rotation.x = 0.0
+			rig.position.y = absf(sin(_anim_t * 12.0)) * 0.06 * run + sin(_anim_t * 2.0) * 0.01
+			_leg_l.rotation.x = swing
+			_leg_r.rotation.x = -swing
+			_arm_l.rotation.x = -swing * 0.8
+			_arm_r.rotation.x = swing * 0.8 - 0.2
+			_arm_r.rotation.z = lerpf(_arm_r.rotation.z, 0.0, 0.2)
+	_cape.rotation.x = -0.1 - run * 0.35 + sin(_anim_t * 4.0) * 0.03
+	if mv.length() < 0.05 and state == S.IDLE:
+		_leg_l.rotation.x = lerpf(_leg_l.rotation.x, 0.0, 0.2)
+		_leg_r.rotation.x = lerpf(_leg_r.rotation.x, 0.0, 0.2)

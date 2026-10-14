@@ -22,7 +22,7 @@ const DATA := {
 			{"id": "chest", "text": "Open the treasure chest", "type": "chest", "count": 1},
 			{"id": "equip", "text": "Open your pack and equip the new item", "type": "equip", "count": 1},
 			{"id": "dodge", "text": "Dodge-roll through the danger", "type": "dodge", "count": 1},
-			{"id": "clear", "text": "Defeat the guardians (0/3)", "type": "kills", "count": 3},
+			{"id": "clear", "text": "Defeat the guardians", "type": "kills", "count": 3},
 			{"id": "exit", "text": "Step through the Void Gate", "type": "exit"},
 		],
 	},

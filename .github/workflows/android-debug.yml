@@ -1,0 +1,69 @@
+name: Android Debug Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: android-debug-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7-stable
+
+jobs:
+  build:
+    name: Test and export debug APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Cache Godot export templates
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/godot/export_templates
+          key: godot-templates-${{ env.GODOT_VERSION }}
+
+      - name: Install Godot, templates and Android SDK packages
+        run: tools/ci/setup_godot.sh
+
+      - name: Import project (registers classes, imports assets)
+        run: |
+          godot --headless --import || true
+          godot --headless --import
+
+      - name: Run automated tests
+        run: godot --headless res://voidcrawl/tests/test_runner.tscn
+
+      - name: Create throw-away debug keystore
+        run: |
+          keytool -genkeypair -v -keystore "$RUNNER_TEMP/debug.keystore" -storepass android -keypass android \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US" >/dev/null 2>&1
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$RUNNER_TEMP/debug.keystore" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
+
+      - name: Export debug APK
+        run: |
+          mkdir -p build
+          godot --headless --export-debug "Android Debug" build/voidcrawl-debug.apk
+
+      - name: Verify APK
+        run: tools/ci/verify_apk.sh build/voidcrawl-debug.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: voidcrawl-debug-apk
+          path: build/voidcrawl-debug.apk
+          if-no-files-found: error
+          retention-days: 30

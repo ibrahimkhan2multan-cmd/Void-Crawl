@@ -30,8 +30,16 @@ func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	resized.connect(_relayout)
-	_relayout()
 	name = "TouchControls"
+	if get_parent() is CanvasLayer:
+		# anchors do not resolve under a CanvasLayer, so track the viewport size by hand
+		get_viewport().size_changed.connect(_fit_to_viewport)
+		_fit_to_viewport()
+	_relayout()
+
+func _fit_to_viewport() -> void:
+	position = Vector2.ZERO
+	size = get_viewport_rect().size
 
 func apply_settings() -> void:
 	_relayout()

@@ -13,8 +13,9 @@ config_version=5
 config/name="VOIDCRAWL"
 config/description="VOIDCRAWL - a blocky 3D dark-fantasy dungeon crawler by Infinity Studios."
 config/quit_on_go_back=false
-run/main_scene="res://scenes/opening/opening.tscn"
+run/main_scene="res://voidcrawl/scenes/main_menu.tscn"
 config/features=PackedStringArray("4.7")
+config/version="0.1.0"
 config/icon="res://icon.png"
 
 [autoload]

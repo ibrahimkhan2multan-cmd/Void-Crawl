@@ -31,6 +31,7 @@ static func run(t: Node) -> void:
 	m.queue_free()
 	VCInput.reset()
 	await t.get_tree().process_frame
+	await _menu_test(t)
 	await _crypt_playthrough(t)
 	await _death_and_resume(t)
 
@@ -223,4 +224,27 @@ static func _death_and_resume(t: Node) -> void:
 	t.check("resume rebuilds the same dungeon", m2.seed_ == seed_a)
 	t.check("resume restores counters and chests", m2.counters["kills"] == 5 and m2.opened_chests.has("chest_test"))
 	m2.queue_free()
+	await t.get_tree().process_frame
+
+static func _menu_test(t: Node) -> void:
+	t.section("main menu")
+	VC.new_game()
+	var menu: Node = load("res://voidcrawl/scenes/main_menu.tscn").instantiate()
+	t.add_child(menu)
+	await t.get_tree().process_frame
+	await t.get_tree().process_frame
+	var labels: Array = []
+	for b in menu.find_children("*", "Button", true, false):
+		labels.append((b as Button).text)
+	for want in ["PLAY", "DUNGEONS", "INVENTORY", "CHARACTER", "SETTINGS", "EXIT"]:
+		t.check("menu has %s button" % want, labels.has(want), str(labels))
+	menu._on_button("inventory")
+	await t.get_tree().process_frame
+	t.check("INVENTORY opens the pack screen", menu._modal is VCInventoryScreen)
+	menu._close_modal()
+	menu._on_button("dungeons")
+	await t.get_tree().process_frame
+	t.check("DUNGEONS opens the mission list", menu._modal != null)
+	menu._close_modal()
+	menu.queue_free()
 	await t.get_tree().process_frame

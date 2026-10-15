@@ -1,0 +1,97 @@
+name: Android Release (signed)
+
+# Runs only when triggered explicitly: manually, or by pushing a tag like v0.1.0.
+# Requires repository secrets (never printed):
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_ALIAS, ANDROID_KEYSTORE_PASSWORD
+on:
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Publish a GitHub Release with the APK"
+        type: boolean
+        default: false
+  push:
+    tags: ["v*"]
+
+env:
+  GODOT_VERSION: 4.7-stable
+
+jobs:
+  release:
+    name: Signed release APK
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    env:
+      KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      KS_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+      KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+    steps:
+      - name: Check signing secrets
+        run: |
+          missing=""
+          [ -n "$KS_B64" ] || missing="$missing ANDROID_KEYSTORE_BASE64"
+          [ -n "$KS_ALIAS" ] || missing="$missing ANDROID_KEYSTORE_ALIAS"
+          [ -n "$KS_PASS" ] || missing="$missing ANDROID_KEYSTORE_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Release signing is not configured. Missing repository secrets:$missing. Use the Android Debug Build workflow for debug APKs."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Cache Godot export templates
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/godot/export_templates
+          key: godot-templates-${{ env.GODOT_VERSION }}
+
+      - name: Install Godot, templates and Android SDK packages
+        run: tools/ci/setup_godot.sh
+
+      - name: Import and test
+        run: |
+          godot --headless --import || true
+          godot --headless --import
+          godot --headless res://voidcrawl/tests/test_runner.tscn
+
+      - name: Prepare release keystore
+        run: |
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_USER=$KS_ALIAS" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=$KS_PASS" >> "$GITHUB_ENV"
+
+      - name: Export release APK
+        run: |
+          mkdir -p build
+          godot --headless --export-release "Android Release" build/voidcrawl-release.apk
+
+      - name: Verify APK
+        run: tools/ci/verify_apk.sh build/voidcrawl-release.apk
+
+      - name: Remove keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.keystore"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: voidcrawl-release-apk
+          path: build/voidcrawl-release.apk
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.create_release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [ "${GITHUB_REF_TYPE}" != "tag" ]; then TAG="manual-$(date +%Y%m%d-%H%M%S)"; fi
+          gh release create "$TAG" build/voidcrawl-release.apk --title "VOIDCRAWL $TAG" --notes "Signed release APK built by CI." --target "$GITHUB_SHA"

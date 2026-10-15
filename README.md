@@ -172,3 +172,13 @@ VOIDCRAWL — Enter the unknown.
 Explore deeper. Discover hidden treasures. Conquer the darkness.
 
 An original mobile dungeon adventure in development.
+
+---
+
+## Current build status (developer notes)
+
+**Implemented and covered by the headless test suite** (`godot --headless res://voidcrawl/tests/test_runner.tscn`): seeded dungeon generation with guaranteed reachable exit, combat, enemies, boss phases, loot and equipment stats, save/resume, tutorial and Crypt missions, menus.
+
+**Download the debug APK:** GitHub **Actions → "Android Debug Build"** → latest successful run → artifact `voidcrawl-debug-apk`. Install by enabling "install unknown apps" for your browser/file manager and opening the APK. Signed release builds come from the manual **"Android Release (signed)"** workflow and need the `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_ALIAS`, `ANDROID_KEYSTORE_PASSWORD` repository secrets.
+
+**Not yet verified on a real phone:** touch feel, frame rate (target 30 FPS, unmeasured), thermals, audio on device. The code under `scenes/`, `addons/` and `scripts/` is the unused MIT template (see ATTRIBUTION.md) and is excluded from the APK.

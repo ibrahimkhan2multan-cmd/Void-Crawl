@@ -141,6 +141,11 @@ func _build() -> void:
 	_section("CAMERA")
 	_slider("Camera drag sensitivity", "cam_sens", 0.3, 2.5, 0.1, "%.1fx", 1.0)
 	_slider("Camera distance", "cam_zoom", 0.7, 1.4, 0.05, "%.2fx", 1.0)
+	_section("DIAGNOSTICS")
+	var logb := VCUI.button("VIEW / COPY CRASH LOG", Vector2(360, 56), 22)
+	logb.pressed.connect(_show_log)
+	_scroll_box.add_child(logb)
+	_scroll_box.add_child(VCUI.label("If the game closed by itself, open this, press COPY and send the text to the developer.", 16, VCDefs.COL_TEXT_DIM))
 	var reset := VCUI.button("RESET TO DEFAULTS", Vector2(300, 56), 22)
 	reset.pressed.connect(func():
 		VCSettings.values = VCSettings.DEFAULTS.duplicate()
@@ -156,3 +161,36 @@ func _apply() -> void:
 	VCSettings.apply(get_viewport())
 	VCSettings.save_settings()
 	applied.emit()
+
+func _show_log() -> void:
+	var layer := Control.new()
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.theme = VCUI.theme()
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0.03, 0.92)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(dim)
+	var mc := MarginContainer.new()
+	mc.set_anchors_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		mc.add_theme_constant_override("margin_" + side, 24)
+	layer.add_child(mc)
+	var v := VCUI.vbox(8)
+	mc.add_child(v)
+	var txt := VCCrashGuard.report_text()
+	var te := TextEdit.new()
+	te.text = txt
+	te.editable = false
+	te.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	te.add_theme_font_size_override("font_size", 15)
+	v.add_child(te)
+	var row := VCUI.hbox(10)
+	v.add_child(row)
+	var copy := VCUI.button("COPY", Vector2(220, 56), 22)
+	copy.pressed.connect(func(): DisplayServer.clipboard_set(txt); copy.text = "COPIED")
+	row.add_child(copy)
+	var back := VCUI.button("CLOSE", Vector2(220, 56), 22)
+	back.pressed.connect(layer.queue_free)
+	row.add_child(back)
+	add_child(layer)

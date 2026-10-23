@@ -51,6 +51,9 @@ func _run() -> void:
 		_test_items_and_profile()
 	if _wanted("save"):
 		_test_save_and_settings()
+	if _suite_filter == "soak":
+		await load("res://voidcrawl/tests/soak.gd").run(self)
+		return
 	if ResourceLoader.exists("res://voidcrawl/tests/test_gameplay.gd"):
 		var extra: Script = load("res://voidcrawl/tests/test_gameplay.gd")
 		await extra.run(self)

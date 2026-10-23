@@ -78,6 +78,7 @@ var _autosave_t := 0.0
 var _hint_shown: Dictionary = {}
 var _defeat_shown := false
 var _time := 0.0
+var _resume_pause_pending := false
 var _env: WorldEnvironment
 var _sun: DirectionalLight3D
 
@@ -612,8 +613,11 @@ func _grant_enemy_rewards(e: VCEnemy) -> void:
 				rarity = maxi(VCDefs.Rarity.UNCOMMON, VCItems.roll_rarity(_loot_rng, 0.3))
 			var it := VCItems.generate(_loot_rng, e.level + (1 if e.is_boss else 0), rarity, -1, 0.0, VC.profile.alloc_uid())
 			_drop_item(pos, it)
-	if _loot_rng.randf() < float(d["potion_chance"]):
+	if _loot_rng.randf() < float(d["potion_chance"]) * 1.6:
 		_drop_potion(pos)
+	var hurt := 1.0 - player.hp / float(player.max_hp)
+	if _loot_rng.randf() < 0.14 + 0.45 * hurt:
+		_drop_heart(pos)
 
 func _grant_xp(amount: int, pos: Vector3) -> void:
 	if amount <= 0:
@@ -657,6 +661,14 @@ func _drop_item(pos: Vector3, it: Dictionary) -> void:
 	if int(it["rarity"]) >= VCDefs.Rarity.RARE:
 		play_sfx("pickup", -2.0, 0.8)
 
+func _drop_heart(pos: Vector3) -> void:
+	var p := VCPickup.new()
+	p.world = self
+	_pickup_root.add_child(p)
+	p.setup_heart()
+	p.toss(pos)
+	pickups.append(p)
+
 func _drop_potion(pos: Vector3) -> void:
 	var p := VCPickup.new()
 	p.world = self
@@ -681,6 +693,12 @@ func collect_pickup(p: VCPickup) -> void:
 			prof.potions += 1
 			play_sfx("pickup", -3.0)
 			hud.toast("Health potion  (%d/%d)" % [prof.potions, VCProfile.MAX_POTIONS], VCDefs.COL_HP)
+		VCPickup.Kind.HEART:
+			if player.hp >= float(player.max_hp) - 0.5:
+				return                       # keep it for when you need it
+			player.heal(float(player.max_hp) * 0.18)
+			play_sfx("heal", -4.0, 1.3)
+			fx.burst(player.global_position + Vector3(0, 1.0, 0), VCDefs.COL_GOOD, 8, 2.5, 0.8)
 		VCPickup.Kind.ITEM:
 			var it: Dictionary = p.item
 			if prof.add_item(it):
@@ -897,7 +915,9 @@ func _on_prop_broken(b: VCBreakable) -> void:
 	var roll := _loot_rng.randf()
 	if roll < 0.45:
 		_drop_coins(b.global_position, _loot_rng.randi_range(2, 7))
-	elif roll < 0.52:
+	elif roll < 0.58:
+		_drop_heart(b.global_position)
+	elif roll < 0.64:
 		_drop_potion(b.global_position)
 	b.queue_free()
 
@@ -1179,5 +1199,14 @@ func _notification(what: int) -> void:
 			open_overlay("pause")
 		elif overlay_open in ["pack", "settings"]:
 			close_overlay()
-	elif what == NOTIFICATION_APPLICATION_PAUSED and build_done and overlay_open == "" and not finished:
-		open_overlay("pause")
+	elif what == NOTIFICATION_APPLICATION_PAUSED and build_done and not finished:
+		# Only freeze the game here; building UI while the Android surface is being torn down is risky.
+		_resume_pause_pending = overlay_open == ""
+		if _resume_pause_pending:
+			get_tree().paused = true
+		touch.release_all()
+		_save_run()
+	elif what == NOTIFICATION_APPLICATION_RESUMED and build_done and _resume_pause_pending:
+		_resume_pause_pending = false
+		get_tree().paused = false
+		call_deferred("open_overlay", "pause")

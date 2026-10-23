@@ -21,6 +21,9 @@ func _ready() -> void:
 	_build_ui()
 	VC.play_music("menu")
 	_splash()
+	if VCCrashGuard.crashed_last_time:
+		VCCrashGuard.crashed_last_time = false
+		_notice("The game closed unexpectedly last time. A report was saved: SETTINGS > VIEW / COPY CRASH LOG.")
 
 func _m(c: Color, em: float = 0.0) -> StandardMaterial3D:
 	var key := "%s_%s" % [c.to_html(), em]
@@ -226,6 +229,19 @@ func _refresh_info() -> void:
 			_play_btn.text = "PLAY"
 		else:
 			_play_btn.text = "PLAY"
+
+func _notice(text: String) -> void:
+	var l := VCUI.label(text, 18, Color(1.0, 0.75, 0.5), HORIZONTAL_ALIGNMENT_CENTER)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(620, 0)
+	var p := VCUI.panel(Color(0.12, 0.05, 0.04, 0.95), Color(0.8, 0.4, 0.2))
+	p.add_child(l)
+	p.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	p.position = Vector2(300, 18)
+	_root.add_child(p)
+	var tw := create_tween()
+	tw.tween_interval(9.0)
+	tw.tween_callback(p.queue_free)
 
 func _splash() -> void:
 	var sp := ColorRect.new()

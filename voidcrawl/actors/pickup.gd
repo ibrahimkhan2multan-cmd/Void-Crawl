@@ -3,7 +3,7 @@ extends Node3D
 ## Loot lying on the floor: coins, equipment, health potions. Tossed out, settles, then
 ## magnetises to the hero. Collection is resolved by the mission via collect().
 
-enum Kind { COIN, ITEM, POTION }
+enum Kind { COIN, ITEM, POTION, HEART }
 
 var world: Node = null
 var kind: int = Kind.COIN
@@ -56,6 +56,15 @@ func setup_potion() -> void:
 	VCMats.part(_body, Vector3(0.36, 0.42, 0.36), Vector3.ZERO, VCDefs.COL_HP, 1.0)
 	VCMats.part(_body, Vector3(0.16, 0.18, 0.16), Vector3(0, 0.28, 0), Color(0.85, 0.85, 0.9))
 
+func setup_heart() -> void:
+	kind = Kind.HEART
+	_body = Node3D.new()
+	add_child(_body)
+	VCMats.part(_body, Vector3(0.22, 0.22, 0.22), Vector3(-0.12, 0.08, 0), Color(1.0, 0.25, 0.4), 1.4)
+	VCMats.part(_body, Vector3(0.22, 0.22, 0.22), Vector3(0.12, 0.08, 0), Color(1.0, 0.25, 0.4), 1.4)
+	VCMats.part(_body, Vector3(0.34, 0.2, 0.22), Vector3(0, -0.08, 0), Color(1.0, 0.25, 0.4), 1.4)
+	VCMats.part(_body, Vector3(0.16, 0.16, 0.22), Vector3(0, -0.24, 0), Color(1.0, 0.25, 0.4), 1.4)
+
 ## Toss the pickup from `origin` in a random direction.
 func toss(origin: Vector3) -> void:
 	position = Vector3(origin.x, 0.0, origin.z)
@@ -90,7 +99,7 @@ func _physics_process(delta: float) -> void:
 		var to_p: Vector3 = world.player.global_position - global_position
 		to_p.y = 0.0
 		var d := to_p.length()
-		var magnet: float = 3.2 if kind != Kind.ITEM else 2.4
+		var magnet: float = 3.4 if kind != Kind.ITEM else 2.4
 		if d < magnet:
 			position += to_p.normalized() * minf(d, (5.0 + (magnet - d) * 5.0) * delta)
 		if d < 0.9:

@@ -8,7 +8,7 @@ static var path_override := ""
 const DEFAULTS := {
 	"master": 0.8, "music": 0.6, "sfx": 0.9,
 	"quality": 1,            # 0 low, 1 medium, 2 high
-	"fps": 60,               # 30 or 60
+	"fps": 30,               # 30 or 60
 	"show_fps": false,
 	"joy_size": 1.0, "joy_floating": true, "joy_deadzone": 0.12,
 	"btn_scale": 1.0, "btn_opacity": 0.8, "left_handed": false,

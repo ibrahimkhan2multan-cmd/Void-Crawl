@@ -38,7 +38,10 @@ var dodge_cd := 0.0
 var nova_cd := 0.0
 var potion_cd := 0.0
 var attack_cd := 0.0
-var god_mode := false                # tests / debug only
+var god_mode := false
+var _since_hurt := 99.0
+const REGEN_DELAY := 3.5            # seconds without being hit before slow regeneration starts
+const REGEN_PCT := 0.012            # of max HP per second                # tests / debug only
 
 var _attack_t := 0.0
 var _attack_total := 0.4
@@ -211,6 +214,9 @@ func _physics_process(delta: float) -> void:
 		combo_timer -= delta
 		if combo_timer <= 0.0:
 			combo = 0
+	_since_hurt += delta
+	if state != S.DEAD and _since_hurt > REGEN_DELAY and hp < float(max_hp):
+		hp = minf(hp + float(max_hp) * REGEN_PCT * delta * (1.0 + float(stats.get("regen_bonus", 0.0))), float(max_hp))
 	if _heal_pool > 0.0:
 		var h := minf(_heal_pool, float(max_hp) * 0.9 * delta)
 		_heal_pool -= h
@@ -336,12 +342,19 @@ func _start_attack() -> void:
 	world.play_sfx("shoot" if ranged else "swing", -4.0, 1.0 + 0.08 * float(combo % 3))
 	attacked.emit()
 
-func _tick_attack(delta: float, _dir: Vector3) -> void:
+func _tick_attack(delta: float, dir: Vector3) -> void:
 	_attack_t += delta
-	var lunge := 0.0
-	if not bool(stats["ranged"]) and _attack_t < _attack_hit_at:
-		lunge = 3.2 * (1.0 - _attack_t / _attack_hit_at) + 1.0
-	velocity = _attack_dir * lunge + _knock
+	# You can keep moving while you swing. Standing still gives the little lunge forward;
+	# steering keeps most of your speed (more with ranged weapons).
+	var mv_len := VCInput.move_vector().length()
+	var ranged_w: bool = bool(stats["ranged"])
+	var steer := (0.9 if ranged_w else 0.7) * float(stats["move_speed"])
+	var target_v := dir * steer * minf(mv_len * 1.15, 1.0)
+	if mv_len < 0.2 and not ranged_w and _attack_t < _attack_hit_at:
+		target_v = _attack_dir * (3.2 * (1.0 - _attack_t / _attack_hit_at) + 1.0)
+	velocity = velocity.lerp(target_v, clampf(delta * 18.0, 0.0, 1.0)) + _knock
+	if _attack_hit_done and mv_len > 0.2:
+		facing = lerp_angle(facing, atan2(-dir.x, -dir.z), clampf(delta * 10.0, 0.0, 1.0))
 	if not _attack_hit_done and _attack_t >= _attack_hit_at:
 		_attack_hit_done = true
 		_do_attack_hit()
@@ -487,6 +500,7 @@ func take_damage(amount: float, from_pos: Vector3, ignore_armor: bool = false) -
 	var red := 0.0 if ignore_armor else armor / (armor + 45.0)
 	var dmg := maxf(1.0, round(amount * (1.0 - red)))
 	hp -= dmg
+	_since_hurt = 0.0
 	invuln = 0.4
 	_flash = 0.1
 	_set_flash(true)

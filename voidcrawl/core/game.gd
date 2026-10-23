@@ -34,6 +34,7 @@ func _ready() -> void:
 	get_tree().set_auto_accept_quit(true)
 	VCSettings.load_settings()
 	VCSettings.apply(get_viewport())
+	VCCrashGuard.on_start()
 	_register_input()
 	_setup_audio()
 	var loaded := VCSave.load_save()
@@ -190,5 +191,8 @@ func goto_menu() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
+		VCCrashGuard.mark_running(false)
 		if profile != null and autosave:
 			save_now()
+	elif what == NOTIFICATION_APPLICATION_RESUMED:
+		VCCrashGuard.mark_running(true)

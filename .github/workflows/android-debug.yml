@@ -41,7 +41,12 @@ jobs:
           godot --headless --import
 
       - name: Run automated tests
-        run: godot --headless res://voidcrawl/tests/test_runner.tscn
+        run: |
+          set +e
+          godot --headless --fixed-fps 240 res://voidcrawl/tests/test_runner.tscn 2>&1 | tee test.log
+          code=${PIPESTATUS[0]}
+          grep -E "FAIL|SCRIPT ERROR|Parse Error|TESTS:" test.log | head -20 | while read -r l; do echo "::error::$l"; done
+          exit $code
 
       - name: Create throw-away debug keystore
         run: |

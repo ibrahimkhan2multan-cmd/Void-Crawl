@@ -59,7 +59,7 @@ jobs:
         run: |
           godot --headless --import || true
           godot --headless --import
-          godot --headless res://voidcrawl/tests/test_runner.tscn
+          godot --headless --fixed-fps 240 res://voidcrawl/tests/test_runner.tscn
 
       - name: Prepare release keystore
         run: |

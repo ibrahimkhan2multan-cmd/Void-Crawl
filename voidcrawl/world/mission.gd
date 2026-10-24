@@ -458,11 +458,8 @@ func _process(delta: float) -> void:
 	_update_fade_uniforms()
 	_light_t -= delta
 	if _light_t <= 0.0:
-		_light_t = 0.25
+		_light_t = 0.12
 		builder.update_lights(player.global_position, int(VCSettings.quality_profile()["max_lights"]), _time)
-	if builder != null:
-		# flicker is cheap but only needs to run on the few visible lights
-		builder.update_lights(player.global_position, int(VCSettings.quality_profile()["max_lights"]), _time) if int(_time * 10.0) % 3 == 0 else null
 
 func _update_fade_uniforms() -> void:
 	var cam := cam_rig.cam

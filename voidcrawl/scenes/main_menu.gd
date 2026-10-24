@@ -23,7 +23,7 @@ func _ready() -> void:
 	_splash()
 	if VCCrashGuard.crashed_last_time:
 		VCCrashGuard.crashed_last_time = false
-		_notice("The game closed unexpectedly last time. Tap COPY and send the text to the developer so it can be fixed.")
+		_notice("The game closed unexpectedly last time. Tap OPEN CRASH REPORT, then screenshot it and send it to the developer.")
 
 func _m(c: Color, em: float = 0.0) -> StandardMaterial3D:
 	var key := "%s_%s" % [c.to_html(), em]
@@ -238,10 +238,12 @@ func _notice(text: String) -> void:
 	var vb := VCUI.vbox(8)
 	p.add_child(vb)
 	vb.add_child(l)
-	var cb := VCUI.button("COPY CRASH REPORT", Vector2(300, 52), 20)
+	var cb := VCUI.button("OPEN CRASH REPORT", Vector2(300, 52), 20)
 	cb.pressed.connect(func():
-		DisplayServer.clipboard_set(VCCrashGuard.report_text())
-		cb.text = "COPIED - paste it to the developer")
+		var lay := CanvasLayer.new()
+		lay.layer = 60
+		add_child(lay)
+		lay.add_child(VCLogViewer.make()))
 	vb.add_child(cb)
 	p.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	p.position = Vector2(300, 18)

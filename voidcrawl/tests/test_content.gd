@@ -6,6 +6,7 @@ const GP := preload("res://voidcrawl/tests/test_gameplay.gd")
 static func run(t: Node) -> void:
 	_items(t)
 	_generation(t)
+	fuzz(t)
 	await _healing_and_movement(t)
 	await _enemies(t)
 	await _bomb(t)
@@ -242,3 +243,20 @@ static func _forge_and_delve(t: Node) -> void:
 	t.check("floor 2 boss is the Colossus", d._boss_type() == "colossus")
 	d.queue_free()
 	await t.get_tree().process_frame
+
+static func fuzz(t: Node) -> void:
+	t.section("content: generator fuzz (1500 random seeds, hang/validity check)")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 99
+	var bad := 0
+	var worst := 0
+	for i in 500:
+		for id in ["crypt", "forge", "delve"]:
+			var s := rng.randi_range(1, 2000000000)
+			var t0 := Time.get_ticks_msec()
+			var d := VCDungeonGenerator.generate(s, id)
+			var ok: bool = VCDungeonValidator.validate(d, 0)["ok"]
+			worst = maxi(worst, Time.get_ticks_msec() - t0)
+			if not ok:
+				bad += 1
+	t.check("1500 random seeds: failures %d (the game retries the next seed), slowest %d ms" % [bad, worst], bad <= 15 and worst < 1500)

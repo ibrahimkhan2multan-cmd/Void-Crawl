@@ -23,7 +23,7 @@ func _ready() -> void:
 	_splash()
 	if VCCrashGuard.crashed_last_time:
 		VCCrashGuard.crashed_last_time = false
-		_notice("The game closed unexpectedly last time. Tap OPEN CRASH REPORT, then screenshot it and send it to the developer.")
+		_notice("The game closed unexpectedly last time. Safe graphics mode was turned on automatically. Tap OPEN CRASH REPORT, screenshot it and send it to the developer.")
 
 func _m(c: Color, em: float = 0.0) -> StandardMaterial3D:
 	var key := "%s_%s" % [c.to_html(), em]
@@ -274,6 +274,7 @@ func _on_button(id: String) -> void:
 	if _modal != null:
 		return
 	VC.play_sfx("click", -4.0)
+	VCCrashGuard.stage("menu:" + id)
 	match id:
 		"play":
 			if VC.has_run_in_progress():

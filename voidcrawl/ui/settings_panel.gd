@@ -127,6 +127,7 @@ func _build() -> void:
 	_choice("Quality preset", "quality", ["Low", "Medium", "High"], [0, 1, 2])
 	_choice("Frame rate cap", "fps", ["30 FPS", "60 FPS"], [30, 60])
 	_toggle("Show FPS counter", "show_fps")
+	_toggle("Safe graphics mode (plain materials, no glow/fog)", "safe_mode")
 	_toggle("Damage numbers", "damage_numbers")
 	_slider("Screen shake", "screen_shake", 0.0, 1.5, 0.1)
 	_scroll_box.add_child(VCUI.label("Low uses 3 lights, no fog and fewer particles. Use it if the game stutters.", 16, VCDefs.COL_TEXT_DIM))

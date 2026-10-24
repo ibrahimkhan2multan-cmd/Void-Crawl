@@ -11,6 +11,7 @@ static func run(t: Node) -> void:
 	await _enemies(t)
 	await _bomb(t)
 	await _forge_and_delve(t)
+	await safe_mode(t)
 
 static func _items(t: Node) -> void:
 	t.section("content: gear")
@@ -260,3 +261,16 @@ static func fuzz(t: Node) -> void:
 			if not ok:
 				bad += 1
 	t.check("1500 random seeds: failures %d (the game retries the next seed), slowest %d ms" % [bad, worst], bad <= 15 and worst < 1500)
+
+static func safe_mode(t: Node) -> void:
+	t.section("safe graphics mode")
+	VCSettings.values["safe_mode"] = true
+	VCSettings.save_settings()
+	var m: VCMission = await GP._launch(t, "crypt", 555)
+	t.check("mission builds in safe mode with plain materials", m.build_done and not (m.builder.wall_mat is ShaderMaterial))
+	await GP._frames(t, 120)
+	t.check("safe mode runs", m.player.is_alive())
+	m.queue_free()
+	await t.get_tree().process_frame
+	VCSettings.values["safe_mode"] = false
+	VCSettings.save_settings()

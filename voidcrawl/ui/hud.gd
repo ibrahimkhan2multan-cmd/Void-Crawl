@@ -49,23 +49,24 @@ func _ready() -> void:
 	var ml := float(m["left"])
 	var mt := float(m["top"])
 
-	var dark := TextureRect.new()
-	var g := Gradient.new()
-	g.colors = PackedColorArray([Color(0, 0, 0.02, 0.0), Color(0, 0, 0.02, 0.0), Color(0.02, 0.0, 0.05, 0.62)])
-	g.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
-	var gt := GradientTexture2D.new()
-	gt.gradient = g
-	gt.fill = GradientTexture2D.FILL_RADIAL
-	gt.fill_from = Vector2(0.5, 0.5)
-	gt.fill_to = Vector2(1.05, 0.5)
-	gt.width = 128
-	gt.height = 128
-	dark.texture = gt
-	dark.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dark.stretch_mode = TextureRect.STRETCH_SCALE
-	dark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	dark.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(dark)
+	if not VCSettings.safe_mode():
+		var dark := TextureRect.new()
+		var g := Gradient.new()
+		g.colors = PackedColorArray([Color(0, 0, 0.02, 0.0), Color(0, 0, 0.02, 0.0), Color(0.02, 0.0, 0.05, 0.62)])
+		g.offsets = PackedFloat32Array([0.0, 0.55, 1.0])
+		var gt := GradientTexture2D.new()
+		gt.gradient = g
+		gt.fill = GradientTexture2D.FILL_RADIAL
+		gt.fill_from = Vector2(0.5, 0.5)
+		gt.fill_to = Vector2(1.05, 0.5)
+		gt.width = 128
+		gt.height = 128
+		dark.texture = gt
+		dark.set_anchors_preset(Control.PRESET_FULL_RECT)
+		dark.stretch_mode = TextureRect.STRETCH_SCALE
+		dark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		dark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(dark)
 	vignette = ColorRect.new()
 	vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
 	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE

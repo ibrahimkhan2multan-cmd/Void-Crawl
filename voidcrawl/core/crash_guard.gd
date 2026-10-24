@@ -40,14 +40,20 @@ static func on_start() -> void:
 			pf.store_string(old)
 			pf.close()
 	if crashed_last_time:
+		VCSettings.values["safe_mode"] = true          # next run uses the plain, safest graphics
+		VCSettings.save_settings()
 		var txt := _previous_log_text()
 		var f := FileAccess.open(REPORT, FileAccess.WRITE)
 		if f != null:
 			f.store_string("VOIDCRAWL possible crash report\nversion %s\ndevice %s | %s | gpu %s\ntime %s\n\n--- last state snapshots before the crash ---\n%s\n\n%s" % [
 				String(ProjectSettings.get_setting("application/config/version", "?")), OS.get_model_name(), OS.get_version(),
-				RenderingServer.get_video_adapter_name(), Time.get_datetime_string_from_system(), _tail(CRUMBS_PREV, 14), txt])
+				RenderingServer.get_video_adapter_name(), Time.get_datetime_string_from_system(), _tail(CRUMBS_PREV, 24), txt])
 			f.close()
 	mark_running(true)
+
+## Marks a stage right before something risky, so the report shows the last thing attempted.
+static func stage(name: String) -> void:
+	crumb("STAGE " + name)
 
 static func mark_running(on: bool) -> void:
 	if on:

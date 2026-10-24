@@ -31,3 +31,13 @@ static func make(quality: Dictionary, boss: bool = false, palette: String = "cry
 		env.glow_hdr_threshold = 0.95
 		env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 	return env
+
+## Minimal environment: flat ambient, no fog, no tone-map, no adjustments, no glow.
+static func make_safe() -> Environment:
+	var env := Environment.new()
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.015, 0.008, 0.03)
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color = Color(0.8, 0.76, 0.88)
+	env.ambient_light_energy = 0.9
+	return env

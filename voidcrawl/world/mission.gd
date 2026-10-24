@@ -116,6 +116,7 @@ func _build() -> void:
 		want_seed = int(Time.get_unix_time_from_system()) % 1000000 + 1
 	VCSettings.load_settings()
 	VCSettings.apply(get_viewport())
+	VCCrashGuard.stage("generate")
 	await _step(0.08, "Carving the dungeon...")
 	seed_ = want_seed
 	var tries := 0
@@ -132,9 +133,12 @@ func _build() -> void:
 			break
 	_loot_rng.seed = seed_ * 31 + 7
 	var q := VCSettings.quality_profile()
+	VCCrashGuard.stage("environment")
 	await _step(0.3, "Raising the walls...")
 	_env = WorldEnvironment.new()
 	_env.environment = VCEnv.make(q, false, String(mission.get("palette", "crypt")))
+	if VCSettings.safe_mode():
+		_env.environment = VCEnv.make_safe()
 	add_child(_env)
 	_sun = DirectionalLight3D.new()
 	_sun.light_color = Color(0.7, 0.62, 0.95)
@@ -142,9 +146,11 @@ func _build() -> void:
 	_sun.rotation_degrees = Vector3(-58.0, -25.0, 0.0)
 	_sun.shadow_enabled = bool(q["shadows"])
 	add_child(_sun)
+	VCCrashGuard.stage("builder")
 	builder = VCDungeonBuilder.new()
 	add_child(builder)
 	await builder.build(data, q, Callable() if fast_build else func(): await get_tree().process_frame)
+	VCCrashGuard.stage("fx+player")
 	await _step(0.55, "Lighting the torches...")
 	_enemy_root = Node3D.new(); _enemy_root.name = "Enemies"; add_child(_enemy_root)
 	_pickup_root = Node3D.new(); _pickup_root.name = "Pickups"; add_child(_pickup_root)
@@ -163,6 +169,16 @@ func _build() -> void:
 	player.world = self
 	add_child(player)
 	player.bind(VC.profile)
+	if float(q["particles"]) > 0.0:
+		_add_dust(q)
+	player.died.connect(_on_player_died)
+	player.dodged.connect(func(): counters["dodges"] += 1; _update_objectives())
+	cam_rig = VCCameraRig.new()
+	add_child(cam_rig)
+	cam_rig.target = player
+	await _after_player_setup(q)
+
+func _add_dust(q: Dictionary) -> void:
 	var dust := CPUParticles3D.new()
 	dust.amount = maxi(6, int(28.0 * float(q["particles"])))
 	dust.lifetime = 5.0
@@ -184,11 +200,9 @@ func _build() -> void:
 	dq.material = dm
 	dust.mesh = dq
 	player.add_child(dust)
-	player.died.connect(_on_player_died)
-	player.dodged.connect(func(): counters["dodges"] += 1; _update_objectives())
-	cam_rig = VCCameraRig.new()
-	add_child(cam_rig)
-	cam_rig.target = player
+
+func _after_player_setup(q: Dictionary) -> void:
+	VCCrashGuard.stage("ui")
 	_ui_layer = CanvasLayer.new()
 	_ui_layer.layer = 10
 	add_child(_ui_layer)
@@ -204,8 +218,10 @@ func _build() -> void:
 	_ctl_layer.add_child(touch)
 	touch.pause_pressed.connect(func(): open_overlay("pause"))
 	touch.inventory_pressed.connect(func(): open_overlay("pack"))
+	VCCrashGuard.stage("restore")
 	await _step(0.8, "Waking the dead...")
 	_restore_run_state()
+	VCCrashGuard.stage("objects")
 	await _step(0.85, "Placing treasure...")
 	_spawn_world_objects()
 	_place_player()
@@ -213,10 +229,12 @@ func _build() -> void:
 	cam_rig.yaw = 0.0
 	_update_objectives()
 	VC.profile.stats["deaths"] = int(VC.profile.stats["deaths"])
+	VCCrashGuard.stage("ready")
 	await _step(1.0, "Enter the void.")
 	_loader.queue_free()
 	_loader = null
 	build_done = true
+	VCCrashGuard.stage("playing")
 	VC.play_music("dungeon")
 	hud.set_seed_text("%s%s  |  seed %d" % [String(mission["name"]), ("  floor %d" % floor_n) if bool(mission.get("endless", false)) else "", seed_])
 	var bn := String(mission["name"]).to_upper()
@@ -471,6 +489,8 @@ func _update_fade_uniforms() -> void:
 		return
 	var sp := cam.unproject_position(p)
 	var depth := -(cam.global_transform.affine_inverse() * p).z
+	if not (builder.wall_mat is ShaderMaterial):
+		return
 	var m: ShaderMaterial = builder.wall_mat
 	m.set_shader_parameter("player_screen", Vector2(sp.x / vp.x, sp.y / vp.y))
 	m.set_shader_parameter("player_depth", depth)

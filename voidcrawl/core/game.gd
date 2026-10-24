@@ -190,6 +190,7 @@ func notify_profile_changed() -> void:
 	profile_changed.emit()
 
 func start_mission(mission_id: String, seed_: int = 0, resume: bool = false, extra: Dictionary = {}) -> void:
+	VCCrashGuard.stage("start_mission " + mission_id)
 	pending = {"mission": mission_id, "seed": seed_, "resume": resume}
 	pending.merge(extra, true)
 	if not resume:

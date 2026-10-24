@@ -18,9 +18,9 @@ const THEME_COL := {
 }
 
 var data: VCDungeonData
-var wall_mat: ShaderMaterial
-var floor_mat: ShaderMaterial
-var glow_mat: ShaderMaterial
+var wall_mat: Material
+var floor_mat: Material
+var glow_mat: Material
 var world_body: StaticBody3D
 var lights: Array = []                 # Array[Dictionary] {node, base, flicker, pos}
 var secrets: Dictionary = {}           # id -> {"body": StaticBody3D, "vis": Node3D, "tiles": [...]}
@@ -38,7 +38,13 @@ func _yield() -> void:
 func _init() -> void:
 	name = "DungeonGeometry"
 
-static func _make_world_material(fade: bool) -> ShaderMaterial:
+static func _make_world_material(fade: bool) -> Material:
+	if VCSettings.safe_mode():
+		var sm := StandardMaterial3D.new()
+		sm.vertex_color_use_as_albedo = true
+		sm.roughness = 1.0
+		sm.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+		return sm
 	var m := ShaderMaterial.new()
 	m.shader = load("res://voidcrawl/assets/shaders/world.gdshader")
 	m.set_shader_parameter("tex", VCMats.stone_texture())
@@ -54,8 +60,15 @@ func build(d: VCDungeonData, quality: Dictionary, step: Callable = Callable()) -
 	_rng.seed = d.seed * 7919 + 13
 	wall_mat = _make_world_material(true)
 	floor_mat = _make_world_material(false)
-	glow_mat = ShaderMaterial.new()
-	glow_mat.shader = load("res://voidcrawl/assets/shaders/glow.gdshader")
+	if VCSettings.safe_mode():
+		var gm := StandardMaterial3D.new()
+		gm.vertex_color_use_as_albedo = true
+		gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow_mat = gm
+	else:
+		var gs := ShaderMaterial.new()
+		gs.shader = load("res://voidcrawl/assets/shaders/glow.gdshader")
+		glow_mat = gs
 	world_body = StaticBody3D.new()
 	world_body.name = "WorldCollision"
 	world_body.collision_layer = VCDefs.L_WORLD

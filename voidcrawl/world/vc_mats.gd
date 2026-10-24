@@ -146,6 +146,8 @@ static func blob_shadow() -> StandardMaterial3D:
 	return m
 
 static func add_blob(parent: Node3D, size: float) -> void:
+	if VCSettings.safe_mode():
+		return
 	var mi := MeshInstance3D.new()
 	var q := QuadMesh.new()
 	q.size = Vector2(size, size)

@@ -10,6 +10,7 @@ const DEFAULTS := {
 	"quality": 1,            # 0 low, 1 medium, 2 high
 	"fps": 30,               # 30 or 60
 	"show_fps": false,
+	"safe_mode": false,      # plain materials, no custom shaders / glow / fog / gradients (auto-enabled after a crash)
 	"joy_size": 1.0, "joy_floating": true, "joy_deadzone": 0.12,
 	"btn_scale": 1.0, "btn_opacity": 0.8, "left_handed": false,
 	"cam_sens": 1.0, "cam_zoom": 1.0,
@@ -53,7 +54,12 @@ static func _set_bus(bus_name: String, linear: float) -> void:
 	AudioServer.set_bus_volume_db(idx, linear_to_db(clampf(linear, 0.0001, 1.0)))
 
 ## Quality presets. Returns a dictionary of tunables read by the world/builder.
+static func safe_mode() -> bool:
+	return bool(values.get("safe_mode", false))
+
 static func quality_profile() -> Dictionary:
+	if safe_mode():
+		return {"scale_3d": 1.0, "max_lights": 2, "particles": 0.0, "shadows": false, "msaa": 0, "fog": false, "glow": false, "max_enemies_fx": 4}
 	match int(values["quality"]):
 		0:
 			return {"scale_3d": 0.62, "max_lights": 3, "particles": 0.35, "shadows": false, "msaa": 0, "fog": false, "glow": false, "max_enemies_fx": 6}

@@ -49,6 +49,8 @@ static func on_start() -> void:
 				String(ProjectSettings.get_setting("application/config/version", "?")), OS.get_model_name(), OS.get_version(),
 				RenderingServer.get_video_adapter_name(), Time.get_datetime_string_from_system(), _tail(CRUMBS_PREV, 24), txt])
 			f.close()
+	elif FileAccess.file_exists(REPORT):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(REPORT))   # never show a stale report
 	mark_running(true)
 
 ## Marks a stage right before something risky, so the report shows the last thing attempted.

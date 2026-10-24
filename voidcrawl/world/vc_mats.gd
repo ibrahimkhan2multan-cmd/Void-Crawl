@@ -120,3 +120,38 @@ static func part(parent: Node3D, size: Vector3, pos: Vector3, color: Color, emis
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
 	return mi
+
+static var _blob: StandardMaterial3D = null
+
+## Soft round contact shadow (radial gradient), shared by every actor.
+static func blob_shadow() -> StandardMaterial3D:
+	if _blob != null:
+		return _blob
+	var g := Gradient.new()
+	g.colors = PackedColorArray([Color(0, 0, 0, 0.55), Color(0, 0, 0, 0.0)])
+	g.offsets = PackedFloat32Array([0.15, 1.0])
+	var tex := GradientTexture2D.new()
+	tex.gradient = g
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = 64
+	tex.height = 64
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = tex
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_blob = m
+	return m
+
+static func add_blob(parent: Node3D, size: float) -> void:
+	var mi := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(size, size)
+	mi.mesh = q
+	mi.rotation_degrees = Vector3(-90, 0, 0)
+	mi.position = Vector3(0, 0.04, 0)
+	mi.material_override = blob_shadow()
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mi)

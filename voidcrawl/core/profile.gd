@@ -4,6 +4,7 @@ extends RefCounted
 
 const MAX_LEVEL := 20
 const INV_CAP := 36
+const MAX_BOMBS := 5
 const MAX_POTIONS := 3
 
 var level: int = 1
@@ -12,6 +13,7 @@ var attr_points: int = 0
 var attrs: Dictionary = {"str": 0, "vit": 0, "agi": 0, "arc": 0}
 var coins: int = 0
 var potions: int = MAX_POTIONS
+var bombs: int = 3
 var inventory: Array = []            # Array[Dictionary] items
 var equipment: Dictionary = {}       # slot(int) -> item Dictionary
 var completed: Array = []            # mission ids
@@ -122,6 +124,7 @@ func derived() -> Dictionary:
 	d["cd_mult"] = clampf(1.0 - arc * 0.01 - float(t["cdr"]) / 100.0, 0.4, 1.0)
 	d["leech"] = float(t["leech"]) / 100.0
 	d["coin_mult"] = 1.0 + float(t["coin"]) / 100.0
+	d["regen_bonus"] = float(t["regen"]) / 100.0 + vit * 0.03
 	var avg := (float(t["dmg_min"]) + float(t["dmg_max"])) * 0.5
 	d["power"] = int(round(avg * float(d["dmg_mult"]) * (1.0 + float(d["crit"])) / maxf(float(t["interval"]), 0.1) + float(d["max_hp"]) / 10.0 + float(d["armor"])))
 	return d
@@ -150,7 +153,7 @@ func to_dict() -> Dictionary:
 		eq[str(slot)] = equipment[slot]
 	return {
 		"level": level, "xp": xp, "attr_points": attr_points, "attrs": attrs.duplicate(),
-		"coins": coins, "potions": potions, "inventory": inventory.duplicate(true),
+		"coins": coins, "potions": potions, "bombs": bombs, "inventory": inventory.duplicate(true),
 		"equipment": eq, "completed": completed.duplicate(), "stats": stats.duplicate(),
 		"next_uid": next_uid,
 	}
@@ -165,6 +168,7 @@ static func from_dict(d: Dictionary) -> VCProfile:
 		p.attrs[k] = maxi(int(a.get(k, 0)), 0)
 	p.coins = maxi(int(d.get("coins", 0)), 0)
 	p.potions = clampi(int(d.get("potions", MAX_POTIONS)), 0, MAX_POTIONS)
+	p.bombs = clampi(int(d.get("bombs", 3)), 0, MAX_BOMBS)
 	for raw in d.get("inventory", []):
 		if raw is Dictionary:
 			var it := VCItems.sanitize(raw)

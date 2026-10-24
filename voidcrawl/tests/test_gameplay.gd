@@ -34,6 +34,7 @@ static func run(t: Node) -> void:
 	await _menu_test(t)
 	await _crypt_playthrough(t)
 	await _death_and_resume(t)
+	await load("res://voidcrawl/tests/test_content.gd").run(t)
 
 static func _tp(m: VCMission, pos: Vector3) -> void:
 	m.player.global_position = pos

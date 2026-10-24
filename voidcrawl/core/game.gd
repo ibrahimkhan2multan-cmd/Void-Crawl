@@ -52,6 +52,7 @@ func _register_input() -> void:
 		"vc_dodge": [KEY_K, KEY_X],
 		"vc_ability": [KEY_L, KEY_C],
 		"vc_heal": [KEY_H, KEY_Q],
+		"vc_bomb": [KEY_B, KEY_V],
 		"vc_sprint": [KEY_SHIFT],
 		"vc_pause": [KEY_ESCAPE, KEY_P],
 		"vc_inventory": [KEY_I, KEY_TAB],
@@ -180,8 +181,11 @@ func new_game() -> void:
 func notify_profile_changed() -> void:
 	profile_changed.emit()
 
-func start_mission(mission_id: String, seed_: int = 0, resume: bool = false) -> void:
+func start_mission(mission_id: String, seed_: int = 0, resume: bool = false, extra: Dictionary = {}) -> void:
 	pending = {"mission": mission_id, "seed": seed_, "resume": resume}
+	pending.merge(extra, true)
+	if not resume:
+		run = {}
 	get_tree().paused = false
 	get_tree().change_scene_to_file(MISSION_SCENE)
 

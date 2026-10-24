@@ -30,7 +30,30 @@ void fragment() {
 		uv = wpos.xy;
 	}
 	vec3 t = texture(tex, uv * 0.5).rgb;
-	ALBEDO = COLOR.rgb * t;
+	// procedural stonework: slabs on floors and tops, offset brick courses on walls
+	vec2 q = uv;
+	float brick_h = 0.5;
+	if (wnorm.y > 0.6) {
+		q = uv;
+	} else {
+		q = vec2(uv.x, uv.y / brick_h);
+	}
+	float row = floor(q.y);
+	q.x += mod(row, 2.0) * 0.5;
+	vec2 cell = floor(q);
+	vec2 f = fract(q);
+	float edge = min(min(f.x, 1.0 - f.x), min(f.y, 1.0 - f.y));
+	float mortar = smoothstep(0.0, 0.09, edge);
+	float h = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);
+	float tint = 0.86 + 0.28 * h;
+	float bevel = smoothstep(0.09, 0.22, edge);
+	vec3 stone = COLOR.rgb * t * tint * mix(0.55, 1.0, mortar) * (0.94 + 0.12 * bevel);
+	if (wnorm.y <= 0.6) {
+		// walls: darker near the floor, lit rim near the top
+		stone *= mix(0.55, 1.0, smoothstep(0.0, 1.4, wpos.y));
+		stone += vec3(0.05, 0.035, 0.08) * smoothstep(2.0, 2.8, wpos.y);
+	}
+	ALBEDO = stone;
 	ROUGHNESS = 1.0;
 	if (fade_enabled > 0.5) {
 		float depth = -VERTEX.z;

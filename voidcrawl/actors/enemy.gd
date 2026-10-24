@@ -88,6 +88,8 @@ func _ready() -> void:
 	add_child(cs)
 	_build_rig()
 	rig.scale = Vector3.ONE * float(def.get("scale", 1.0))
+	if not bool(def.get("floating", false)):
+		VCMats.add_blob(self, 1.3 * float(def.get("scale", 1.0)))
 	_hover = 1.1 if bool(def.get("floating", false)) else 0.0
 	_cd = randf_range(0.2, 0.9)
 	_last_pos = global_position
@@ -116,9 +118,9 @@ func _build_rig() -> void:
 	rig = Node3D.new()
 	rig.name = "Rig"
 	add_child(rig)
-	var glow := Color(0.75, 0.35, 1.0)
+	var glow: Color = def.get("glow", Color(0.75, 0.35, 1.0))
 	match type_id:
-		"husk":
+		"husk", "shieldbearer":
 			var bone := Color(0.72, 0.68, 0.62)
 			var rag := Color(0.28, 0.2, 0.34)
 			_leg_l = _limb(rig, Vector3(-0.15, 0.6, 0)); _leg_r = _limb(rig, Vector3(0.15, 0.6, 0))
@@ -133,21 +135,27 @@ func _build_rig() -> void:
 			_mk(_arm_l, Vector3(0.16, 0.66, 0.16), Vector3(0, -0.3, 0), bone * 0.85)
 			_mk(_arm_r, Vector3(0.16, 0.66, 0.16), Vector3(0, -0.3, 0), bone * 0.85)
 			_mk(_arm_r, Vector3(0.08, 0.1, 0.8), Vector3(0, -0.62, -0.4), Color(0.45, 0.4, 0.5))
-		"slinger":
+			if type_id == "shieldbearer":
+				_mk(_arm_l, Vector3(0.14, 1.0, 0.8), Vector3(-0.1, -0.35, -0.35), Color(0.42, 0.45, 0.55))
+				_mk(_arm_l, Vector3(0.16, 0.7, 0.5), Vector3(-0.12, -0.35, -0.38), glow * 0.9, 1.2)
+				_mk(rig, Vector3(0.7, 0.16, 0.5), Vector3(0, 1.32, 0), Color(0.42, 0.45, 0.55))
+		"slinger", "cultist", "necromancer":
 			var bone2 := Color(0.82, 0.8, 0.74)
 			_leg_l = _limb(rig, Vector3(-0.12, 0.62, 0)); _leg_r = _limb(rig, Vector3(0.12, 0.62, 0))
 			_mk(_leg_l, Vector3(0.14, 0.62, 0.16), Vector3(0, -0.31, 0), bone2 * 0.8)
 			_mk(_leg_r, Vector3(0.14, 0.62, 0.16), Vector3(0, -0.31, 0), bone2 * 0.8)
-			_mk(rig, Vector3(0.46, 0.62, 0.28), Vector3(0, 0.94, 0), Color(0.2, 0.14, 0.3))
+			_mk(rig, Vector3(0.46, 0.62, 0.28), Vector3(0, 0.94, 0), def.get("robe", Color(0.2, 0.14, 0.3)) * 1.4)
+			if type_id != "slinger":
+				_mk(rig, Vector3(0.58, 0.9, 0.36), Vector3(0, 0.55, 0), def.get("robe", Color(0.2, 0.14, 0.3)))
 			_mk(rig, Vector3(0.4, 0.4, 0.4), Vector3(0, 1.46, 0), bone2)
-			_mk(rig, Vector3(0.5, 0.48, 0.48), Vector3(0, 1.5, 0.05), Color(0.14, 0.09, 0.22))
+			_mk(rig, Vector3(0.5, 0.48, 0.48), Vector3(0, 1.5, 0.05), def.get("robe", Color(0.14, 0.09, 0.22)))
 			_mk(rig, Vector3(0.09, 0.08, 0.05), Vector3(-0.09, 1.46, -0.21), glow, 3.0)
 			_mk(rig, Vector3(0.09, 0.08, 0.05), Vector3(0.09, 1.46, -0.21), glow, 3.0)
 			_arm_l = _limb(rig, Vector3(-0.32, 1.18, 0)); _arm_r = _limb(rig, Vector3(0.32, 1.18, 0))
 			_mk(_arm_l, Vector3(0.12, 0.6, 0.12), Vector3(0, -0.28, 0), bone2 * 0.85)
 			_mk(_arm_r, Vector3(0.12, 0.6, 0.12), Vector3(0, -0.28, 0), bone2 * 0.85)
 			_mk(_arm_r, Vector3(0.3, 0.3, 0.3), Vector3(0, -0.62, -0.28), glow, 2.0)
-		"spiderling":
+		"spiderling", "embermite":
 			_mk(rig, Vector3(0.7, 0.4, 0.9), Vector3(0, 0.5, 0.15), Color(0.16, 0.1, 0.22))
 			_mk(rig, Vector3(0.46, 0.34, 0.4), Vector3(0, 0.48, -0.5), Color(0.22, 0.14, 0.3))
 			_mk(rig, Vector3(0.08, 0.08, 0.05), Vector3(-0.1, 0.55, -0.71), glow, 3.0)
@@ -258,6 +266,7 @@ func _update_ai(delta: float) -> void:
 		"ranged": _ai_ranged(delta)
 		"dasher": _ai_dasher(delta)
 		"slam": _ai_slam(delta)
+		"exploder": _ai_exploder(delta)
 
 func _speed() -> float:
 	return float(def["speed"]) * speed_mult
@@ -329,15 +338,70 @@ func _ai_ranged(delta: float) -> void:
 			_face(pv, 12.0, delta)
 			if _t >= float(def["windup"]) and not _attack_done:
 				_attack_done = true
-				var proj = world.get_projectile()
-				if proj != null:
-					proj.fire(global_position + _forward() * 0.6, _forward(), float(def["proj_speed"]), dmg, true, Color(0.9, 0.3, 1.0), 0.32, 2.6)
+				if def.has("summon"):
+					_do_summon()
+				else:
+					var fan: int = int(def.get("fan", 1))
+					for fi in fan:
+						var proj = world.get_projectile()
+						if proj != null:
+							var ang := (float(fi) - float(fan - 1) * 0.5) * 0.28
+							proj.fire(global_position + _forward() * 0.6, _forward().rotated(Vector3.UP, ang), float(def["proj_speed"]), dmg, true, Color(def.get("glow", Color(0.9, 0.3, 1.0))), 0.32, 2.6)
 				world.play_sfx("enemy_shoot", -6.0)
 				_cd = float(def["cooldown"]) * randf_range(0.9, 1.3)
 				_enter(S.RECOVER)
 		S.RECOVER:
 			if _t >= 0.4:
 				_enter(S.CHASE)
+
+func _do_summon() -> void:
+	var mine := 0
+	for e in world.enemies:
+		if is_instance_valid(e) and e.get_meta("summoner", 0) == get_instance_id() and e.is_alive():
+			mine += 1
+	var cap: int = int(def.get("summon_cap", 4))
+	var n: int = mini(int(def.get("summon_count", 2)), cap - mine)
+	for i in maxi(n, 0):
+		var a := randf() * TAU
+		var pos := global_position + Vector3(cos(a), 0, sin(a)) * 1.8
+		var e = world.spawn_enemy_at(String(def["summon"]), pos, room, maxi(1, level - 1))
+		if e != null:
+			e.no_drops = true
+			e.set_meta("summoner", get_instance_id())
+	world.fx.ring(global_position, 3.0, Color(def.get("glow", Color(0.5, 1, 0.6))), 0.5)
+
+func _ai_exploder(delta: float) -> void:
+	var pv := _player_vec()
+	var d := pv.length()
+	match state:
+		S.CHASE:
+			_face(pv, 12.0, delta)
+			_move_toward(world.player.global_position, _speed(), delta)
+			if d <= float(def["reach"]):
+				_enter(S.WINDUP)
+				world.play_sfx("telegraph", -8.0, 1.5)
+				_tele = world.fx.telegraph(global_position, 0.0, "circle", float(def["blast"]), 360.0, float(def["windup"]), Color(1.0, 0.5, 0.15))
+		S.WINDUP:
+			velocity *= 0.3
+			if _t >= float(def["windup"]):
+				_explode()
+		S.RECOVER, S.ATTACK:
+			_enter(S.CHASE)
+
+func _explode() -> void:
+	var blast: float = float(def["blast"])
+	world.fx.ring(global_position, blast, Color(1.0, 0.55, 0.2), 0.45)
+	world.fx.burst(global_position + Vector3(0, 0.6, 0), Color(1.0, 0.6, 0.2), 26, 7.0, 1.2)
+	world.play_sfx("boss_roar", -10.0, 1.8)
+	world.camera_shake(0.35)
+	var pl = world.player
+	if _player_vec().length() <= blast + pl.hit_radius:
+		pl.take_damage(dmg, global_position)
+	for b in world.breakables.duplicate():
+		if is_instance_valid(b) and b.is_alive() and b.global_position.distance_to(global_position) <= blast + 0.8:
+			b.take_hit(40.0, global_position)
+	hp = 0.0
+	_die()
 
 func _ai_dasher(delta: float) -> void:
 	var pv := _player_vec()
@@ -517,6 +581,14 @@ func _cancel_tele() -> void:
 func take_hit(amount: float, from_pos: Vector3, crit: bool = false, knock: float = 0.0, _source: Node = null) -> float:
 	if state == S.DEAD or state == S.SPAWN or invulnerable:
 		return 0.0
+	if def.has("block_arc") and state != S.WINDUP and state != S.ATTACK:
+		var to_src := from_pos - global_position
+		to_src.y = 0.0
+		if to_src.length() > 0.1 and rad_to_deg(_forward().angle_to(to_src.normalized())) <= float(def["block_arc"]) * 0.5:
+			amount *= 0.2
+			world.fx.burst(global_position + Vector3(0, 1.0, 0) + _forward() * 0.7, Color(0.7, 0.9, 1.0), 6, 3.0, 0.5)
+			world.play_sfx("click", -4.0, 0.6)
+			knock = 0.0
 	hp -= amount
 	_flash = 0.09
 	_set_flash(true)

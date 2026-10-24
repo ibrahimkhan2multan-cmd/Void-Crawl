@@ -68,6 +68,21 @@ func _draw_glyph(kind: String, col: Color, accent: Color, solid: bool) -> void:
 			draw_arc(c + Vector2(-k * 0.3, 0), k * 1.1, -1.1, 1.1, 18, col, 5.0, true)
 			draw_line(c + Vector2(-k * 0.3 + cos(-1.1) * k * 1.1, sin(-1.1) * k * 1.1), c + Vector2(-k * 0.3 + cos(1.1) * k * 1.1, sin(1.1) * k * 1.1), Color(0.9, 0.9, 1.0, dim), 2.0, true)
 			draw_line(c + Vector2(-k * 0.2, 0), c + Vector2(k * 1.1, 0), accent, 3.0, true)
+		"spear":
+			draw_line(c + Vector2(-k * 1.0, k * 1.0), c + Vector2(k * 0.7, -k * 0.7), Color(0.5, 0.35, 0.25, dim), 5.0, true)
+			draw_colored_polygon(PackedVector2Array([c + Vector2(k * 0.55, -k * 0.5), c + Vector2(k * 1.1, -k * 1.1), c + Vector2(k * 0.5, -k * 0.95), c + Vector2(k * 0.3, -k * 0.65)]), col)
+		"hammer":
+			draw_line(c + Vector2(-k * 0.8, k * 1.0), c + Vector2(k * 0.4, -k * 0.6), Color(0.5, 0.35, 0.25, dim), 5.0, true)
+			draw_colored_polygon(PackedVector2Array([c + Vector2(-k * 0.1, -k * 0.5), c + Vector2(k * 0.7, -k * 1.1), c + Vector2(k * 1.1, -k * 0.5), c + Vector2(k * 0.4, k * 0.1)]), col)
+		"crossbow":
+			draw_line(c + Vector2(-k * 0.2, -k * 1.0), c + Vector2(-k * 0.2, k * 1.0), col, 5.0, true)
+			draw_line(c + Vector2(-k * 0.2, -k * 1.0), c + Vector2(k * 0.7, -k * 0.2), Color(0.9, 0.9, 1.0, dim), 2.0, true)
+			draw_line(c + Vector2(-k * 0.2, k * 1.0), c + Vector2(k * 0.7, k * 0.2), Color(0.9, 0.9, 1.0, dim), 2.0, true)
+			draw_line(c + Vector2(-k * 0.9, 0), c + Vector2(k * 1.0, 0), accent, 4.0, true)
+		"staff":
+			draw_line(c + Vector2(-k * 0.9, k * 1.0), c + Vector2(k * 0.5, -k * 0.7), Color(0.5, 0.35, 0.25, dim), 5.0, true)
+			draw_circle(c + Vector2(k * 0.7, -k * 0.9), k * 0.35, col)
+			draw_arc(c + Vector2(k * 0.7, -k * 0.9), k * 0.55, 0, TAU, 16, accent, 2.0, true)
 		"helm":
 			draw_colored_polygon(PackedVector2Array([c + Vector2(-k, k * 0.7), c + Vector2(-k, -k * 0.2), c + Vector2(-k * 0.6, -k * 0.9), c + Vector2(k * 0.6, -k * 0.9), c + Vector2(k, -k * 0.2), c + Vector2(k, k * 0.7)]), col)
 			draw_rect(Rect2(c + Vector2(-k * 0.65, -k * 0.1), Vector2(k * 1.3, k * 0.3)), Color(0.02, 0.0, 0.05, dim))

@@ -56,11 +56,11 @@ static func _set_bus(bus_name: String, linear: float) -> void:
 static func quality_profile() -> Dictionary:
 	match int(values["quality"]):
 		0:
-			return {"scale_3d": 0.62, "max_lights": 3, "particles": 0.35, "shadows": false, "msaa": 0, "fog": false, "max_enemies_fx": 6}
+			return {"scale_3d": 0.62, "max_lights": 3, "particles": 0.35, "shadows": false, "msaa": 0, "fog": false, "glow": false, "max_enemies_fx": 6}
 		2:
-			return {"scale_3d": 1.0, "max_lights": 8, "particles": 1.0, "shadows": true, "msaa": 2, "fog": true, "max_enemies_fx": 16}
+			return {"scale_3d": 1.0, "max_lights": 8, "particles": 1.0, "shadows": true, "msaa": 2, "fog": true, "glow": true, "max_enemies_fx": 16}
 		_:
-			return {"scale_3d": 0.82, "max_lights": 5, "particles": 0.65, "shadows": false, "msaa": 0, "fog": true, "max_enemies_fx": 10}
+			return {"scale_3d": 0.82, "max_lights": 5, "particles": 0.65, "shadows": false, "msaa": 0, "fog": true, "glow": false, "max_enemies_fx": 10}
 
 ## Apply everything that is global (audio buses, frame cap, viewport).
 static func apply(viewport: Viewport = null) -> void:

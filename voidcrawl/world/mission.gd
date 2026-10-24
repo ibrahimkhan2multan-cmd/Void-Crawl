@@ -55,6 +55,7 @@ var broken_ids: Array = []
 var opened_chests: Array = []
 var opened_secrets: Array = []
 var resumed := false
+var floor_n := 1                        # Endless Delve depth
 var fast_build := false                 # tests skip the per-step frame waits
 
 var _loot_rng := RandomNumberGenerator.new()
@@ -104,6 +105,7 @@ func _build() -> void:
 	var resume: bool = bool(pend.get("resume", false)) and VC.has_run_in_progress() and String(VC.run.get("mission", "")) == mission_id
 	resumed = resume
 	run = VC.run.duplicate(true) if resume else {}
+	floor_n = int(run.get("floor", pend.get("floor", 1))) if resume else int(pend.get("floor", 1))
 	var want_seed := int(pend.get("seed", 0))
 	if resume:
 		want_seed = int(run["seed"])
@@ -131,7 +133,7 @@ func _build() -> void:
 	var q := VCSettings.quality_profile()
 	await _step(0.3, "Raising the walls...")
 	_env = WorldEnvironment.new()
-	_env.environment = VCEnv.make(q)
+	_env.environment = VCEnv.make(q, false, String(mission.get("palette", "crypt")))
 	add_child(_env)
 	_sun = DirectionalLight3D.new()
 	_sun.light_color = Color(0.7, 0.62, 0.95)
@@ -160,6 +162,27 @@ func _build() -> void:
 	player.world = self
 	add_child(player)
 	player.bind(VC.profile)
+	var dust := CPUParticles3D.new()
+	dust.amount = maxi(6, int(28.0 * float(q["particles"])))
+	dust.lifetime = 5.0
+	dust.local_coords = false
+	dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	dust.emission_box_extents = Vector3(9, 1.6, 7)
+	dust.position = Vector3(0, 1.6, 0)
+	dust.direction = Vector3(0.3, 1, 0.2)
+	dust.initial_velocity_min = 0.08
+	dust.initial_velocity_max = 0.3
+	dust.gravity = Vector3.ZERO
+	var dq := QuadMesh.new()
+	dq.size = Vector2(0.07, 0.07)
+	var dm := StandardMaterial3D.new()
+	dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dm.albedo_color = Color(0.8, 0.65, 1.0, 0.55)
+	dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	dq.material = dm
+	dust.mesh = dq
+	player.add_child(dust)
 	player.died.connect(_on_player_died)
 	player.dodged.connect(func(): counters["dodges"] += 1; _update_objectives())
 	cam_rig = VCCameraRig.new()
@@ -193,8 +216,11 @@ func _build() -> void:
 	_loader = null
 	build_done = true
 	VC.play_music("dungeon")
-	hud.set_seed_text("%s  |  seed %d" % [String(mission["name"]), seed_])
-	hud.banner(String(mission["name"]).to_upper(), String(mission["biome"]), VCDefs.COL_VIOLET, 3.2)
+	hud.set_seed_text("%s%s  |  seed %d" % [String(mission["name"]), ("  floor %d" % floor_n) if bool(mission.get("endless", false)) else "", seed_])
+	var bn := String(mission["name"]).to_upper()
+	if bool(mission.get("endless", false)):
+		bn = "DELVE  -  FLOOR %d" % floor_n
+	hud.banner(bn, String(mission["biome"]), VCDefs.COL_VIOLET, 3.2)
 	_save_run()
 	ready_to_play.emit()
 
@@ -397,7 +423,7 @@ func spawn_enemy_at(type: String, pos: Vector3, room: int, level: int) -> VCEnem
 
 func _spawn_enemy_at_tile(type: String, tile: Vector2i, room: int, level: int, delay: float) -> VCEnemy:
 	var e: VCEnemy
-	if type == "warden":
+	if type == "warden" or type == "colossus":
 		e = VCBoss.new()
 	else:
 		e = VCEnemy.new()
@@ -416,6 +442,7 @@ func _enemy_level(room: int) -> int:
 	var base := int(mission.get("recommended_level", 1))
 	if mission_id == "tutorial":
 		return 1
+	base += maxi(floor_n - 1, 0)
 	var depth := int(data.rooms[room]["depth"]) if room >= 0 and room < data.rooms.size() else 0
 	return maxi(1, base + depth / 3)
 
@@ -615,6 +642,8 @@ func _grant_enemy_rewards(e: VCEnemy) -> void:
 			_drop_item(pos, it)
 	if _loot_rng.randf() < float(d["potion_chance"]) * 1.6:
 		_drop_potion(pos)
+	if _loot_rng.randf() < (0.35 if String(d["ai"]) == "slam" else 0.05):
+		_drop_bomb(pos)
 	var hurt := 1.0 - player.hp / float(player.max_hp)
 	if _loot_rng.randf() < 0.14 + 0.45 * hurt:
 		_drop_heart(pos)
@@ -661,6 +690,14 @@ func _drop_item(pos: Vector3, it: Dictionary) -> void:
 	if int(it["rarity"]) >= VCDefs.Rarity.RARE:
 		play_sfx("pickup", -2.0, 0.8)
 
+func _drop_bomb(pos: Vector3) -> void:
+	var p := VCPickup.new()
+	p.world = self
+	_pickup_root.add_child(p)
+	p.setup_bomb()
+	p.toss(pos)
+	pickups.append(p)
+
 func _drop_heart(pos: Vector3) -> void:
 	var p := VCPickup.new()
 	p.world = self
@@ -693,6 +730,12 @@ func collect_pickup(p: VCPickup) -> void:
 			prof.potions += 1
 			play_sfx("pickup", -3.0)
 			hud.toast("Health potion  (%d/%d)" % [prof.potions, VCProfile.MAX_POTIONS], VCDefs.COL_HP)
+		VCPickup.Kind.BOMB:
+			if prof.bombs >= VCProfile.MAX_BOMBS:
+				return
+			prof.bombs += 1
+			play_sfx("pickup", -3.0, 0.8)
+			hud.toast("Void bomb  (%d/%d)" % [prof.bombs, VCProfile.MAX_BOMBS], Color(1.0, 0.7, 0.35))
 		VCPickup.Kind.HEART:
 			if player.hp >= float(player.max_hp) - 0.5:
 				return                       # keep it for when you need it
@@ -779,10 +822,11 @@ func _start_boss(rid: int) -> void:
 	counters["boss_room"] = 1
 	_set_barriers(rid, true)
 	var c: Vector2i = data.rooms[rid]["center"]
-	boss = _spawn_enemy_at_tile("warden", c + Vector2i(0, -5), rid, _enemy_level(rid) + 1, 1.8) as VCBoss
+	boss = _spawn_enemy_at_tile(_boss_type(), c + Vector2i(0, -5), rid, _enemy_level(rid) + 1, 1.8) as VCBoss
 	boss.phase_changed.connect(_on_boss_phase)
 	hud.show_boss(boss)
-	hud.banner("THE HOLLOW WARDEN", "Guardian of the Void Gate", Color(1.0, 0.7, 1.0), 3.4)
+	var is_col := _boss_type() == "colossus"
+	hud.banner("THE ASHEN COLOSSUS" if is_col else String(mission.get("boss_title", "THE HOLLOW WARDEN")), String(mission.get("boss_sub", "Guardian of the Void Gate")), Color(1.0, 0.65, 0.4) if is_col else Color(1.0, 0.7, 1.0), 3.4)
 	play_sfx("boss_roar")
 	camera_shake(0.7)
 	VC.play_music("boss")
@@ -790,6 +834,12 @@ func _start_boss(rid: int) -> void:
 	_cutscene = 2.4
 	_update_objectives()
 	_save_run()
+
+func _boss_type() -> String:
+	var b := String(mission.get("boss", "warden"))
+	if b == "alternate":
+		return "colossus" if floor_n % 2 == 0 else "warden"
+	return b
 
 func _on_boss_phase(phase: int) -> void:
 	if phase == 2:
@@ -887,6 +937,7 @@ func _on_shrine_used(sh: VCInteractable) -> void:
 	checkpoint_room = sh.room
 	player.heal(float(player.max_hp), true)
 	VC.profile.potions = VCProfile.MAX_POTIONS
+	VC.profile.bombs = maxi(VC.profile.bombs, 3)
 	play_sfx("checkpoint")
 	fx.ring(sh.global_position, 3.5, Color(0.5, 0.85, 1.0), 0.8)
 	fx.burst(sh.global_position + Vector3(0, 1.5, 0), Color(0.5, 0.85, 1.0), 20, 4.0, 1.0)
@@ -919,6 +970,8 @@ func _on_prop_broken(b: VCBreakable) -> void:
 		_drop_heart(b.global_position)
 	elif roll < 0.64:
 		_drop_potion(b.global_position)
+	elif roll < 0.69:
+		_drop_bomb(b.global_position)
 	b.queue_free()
 
 func _on_secret_broken(b: VCBreakable) -> void:
@@ -1005,6 +1058,10 @@ func _complete_mission() -> void:
 		prof.completed.append(mission_id)
 	var xp := int(mission["xp"]) if first_time else int(mission["xp"]) / 3
 	var coins := int(mission["coins"]) if first_time else int(mission["coins"]) / 3
+	if bool(mission.get("endless", false)):
+		xp = int(mission["xp"]) + 250 * (floor_n - 1)
+		coins = int(mission["coins"]) + 90 * (floor_n - 1)
+		prof.stats["delve_best"] = maxi(int(prof.stats.get("delve_best", 0)), floor_n)
 	var before_level := prof.level
 	_grant_xp(xp, player.global_position)
 	prof.coins += coins
@@ -1030,6 +1087,9 @@ func _complete_mission() -> void:
 		lines.append(["Level", "%d  (+%d)" % [prof.level, prof.level - before_level], VCDefs.COL_GOOD])
 	var next_id := _next_mission()
 	var buttons: Array = []
+	if bool(mission.get("endless", false)):
+		buttons.append(["DESCEND TO FLOOR %d" % (floor_n + 1), func(): VC.start_mission("delve", 0, false, {"floor": floor_n + 1})])
+		next_id = ""
 	if next_id != "":
 		buttons.append(["NEXT: %s" % String(VCMissions.get_mission(next_id)["name"]).to_upper(), func(): VC.start_mission(next_id)])
 	buttons.append(["RETURN TO MENU", func(): VC.goto_menu()])
@@ -1178,7 +1238,7 @@ func _save_run() -> void:
 		"cleared": (run.get("cleared", []) as Array).duplicate(),
 		"chests": opened_chests.duplicate(), "broken": broken_ids.duplicate(), "secrets": opened_secrets.duplicate(),
 		"obj_index": obj_index, "counters": counters.duplicate(), "boss_state": "dead" if boss_state == "dead" else "idle",
-		"explored": _encode_explored(), "elapsed": elapsed, "finished": false,
+		"explored": _encode_explored(), "elapsed": elapsed, "finished": false, "floor": floor_n,
 	}
 	run = run_d
 	VC.run = run_d

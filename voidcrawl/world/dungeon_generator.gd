@@ -22,7 +22,7 @@ static func generate(seed_: int, mission_id: String) -> VCDungeonData:
 	if String(m.get("layout", "procedural")) == "tutorial":
 		graph = _tutorial_graph()
 	else:
-		graph = _procedural_graph(rng, int(m.get("cols", 4)), int(m.get("rows", 4)), int(m.get("path_len", 8)))
+		graph = _procedural_graph(rng, int(m.get("cols", 4)), int(m.get("rows", 4)), int(m.get("path_len", 8)), String(m.get("palette", "crypt")))
 	var cols: int = graph["cols"]
 	var rows: int = graph["rows"]
 	var d := VCDungeonData.new()
@@ -50,7 +50,11 @@ static func generate(seed_: int, mission_id: String) -> VCDungeonData:
 
 # ------------------------------------------------------------------ graph --
 
-static func _theme_for_path(i: int, n: int) -> String:
+static func _theme_for_path(i: int, n: int, palette: String = "crypt") -> String:
+	if palette == "ember":
+		if i == n - 1:
+			return "magma"
+		return "ash" if i < 3 else ("forge" if i < 6 else "magma")
 	if i == n - 1:
 		return "void"
 	if i < 2:
@@ -73,7 +77,7 @@ static func _tutorial_graph() -> Dictionary:
 	rooms[2]["template"] = "ruined_arena"
 	return {"cols": 3, "rows": 1, "rooms": rooms, "edges": [[0, 1, false], [1, 2, false]], "path": [0, 1, 2]}
 
-static func _procedural_graph(rng: RandomNumberGenerator, cols: int, rows: int, path_len: int) -> Dictionary:
+static func _procedural_graph(rng: RandomNumberGenerator, cols: int, rows: int, path_len: int, palette: String = "crypt") -> Dictionary:
 	var path: Array[Vector2i] = []
 	var dirs := [Vector2i(1, 0), Vector2i(0, 1), Vector2i(0, -1), Vector2i(-1, 0)]
 	for attempt in 400:
@@ -121,7 +125,7 @@ static func _procedural_graph(rng: RandomNumberGenerator, cols: int, rows: int, 
 			t = "boss"
 		elif i == cp_index:
 			t = "checkpoint"
-		var r := _new_room(i, t, _theme_for_path(i, n), path[i], i, i - 1)
+		var r := _new_room(i, t, _theme_for_path(i, n, palette), path[i], i, i - 1)
 		rooms.append(r)
 		cell_to_room[path[i]] = i
 		path_ids.append(i)
@@ -387,7 +391,27 @@ static func _place_wall_lights(d: VCDungeonData, rng: RandomNumberGenerator, r: 
 		else:
 			d.torches.append({"tile": cand[0], "facing": cand[1]})
 
-static func _enemy_pool(depth: int) -> Array:
+static func _enemy_pool(depth: int, kind: String = "crypt") -> Array:
+	if kind == "ember":
+		var ep: Array = [[VCDefs.ENEMY_HUSK, 3.0], [VCDefs.ENEMY_MITE, 3.0]]
+		if depth >= 1:
+			ep.append([VCDefs.ENEMY_SHIELD, 3.0])
+			ep.append([VCDefs.ENEMY_CULTIST, 2.5])
+		if depth >= 2:
+			ep.append([VCDefs.ENEMY_WISP, 1.5])
+		if depth >= 3:
+			ep.append([VCDefs.ENEMY_WEAVER, 1.5])
+			ep.append([VCDefs.ENEMY_BRUTE, 1.5])
+		return ep
+	if kind == "mixed":
+		var mp: Array = [[VCDefs.ENEMY_HUSK, 3.0], [VCDefs.ENEMY_SLINGER, 2.0], [VCDefs.ENEMY_SPIDER, 1.5], [VCDefs.ENEMY_MITE, 2.0],
+			[VCDefs.ENEMY_SHIELD, 2.0], [VCDefs.ENEMY_CULTIST, 2.0]]
+		if depth >= 2:
+			mp.append([VCDefs.ENEMY_WISP, 1.5])
+		if depth >= 3:
+			mp.append([VCDefs.ENEMY_BRUTE, 1.5])
+			mp.append([VCDefs.ENEMY_WEAVER, 1.5])
+		return mp
 	var pool: Array = [[VCDefs.ENEMY_HUSK, 6.0]]
 	if depth >= 1:
 		pool.append([VCDefs.ENEMY_SLINGER, 3.0])
@@ -456,7 +480,7 @@ static func _combat_encounter(d: VCDungeonData, rng: RandomNumberGenerator, r: D
 		var wave: Array = []
 		var brutes := 0
 		for t in tiles:
-			var kind := _pick_weighted(rng, _enemy_pool(depth))
+			var kind := _pick_weighted(rng, _enemy_pool(depth, String(VCMissions.get_mission(d.mission_id).get("pool", "crypt"))))
 			if kind == VCDefs.ENEMY_BRUTE:
 				if brutes >= (2 if depth >= 5 else 1):
 					kind = VCDefs.ENEMY_HUSK

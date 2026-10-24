@@ -10,6 +10,7 @@ signal attacked
 signal dodged
 signal ability_used
 signal potion_used
+signal bomb_thrown
 
 enum S { IDLE, ATTACK, DODGE, DEAD }
 
@@ -37,6 +38,7 @@ var combo_timer := 0.0
 var dodge_cd := 0.0
 var nova_cd := 0.0
 var potion_cd := 0.0
+var bomb_cd := 0.0
 var attack_cd := 0.0
 var god_mode := false
 var _since_hurt := 99.0
@@ -86,9 +88,9 @@ func _ready() -> void:
 	add_child(_coll)
 	_build_rig()
 	_light = OmniLight3D.new()
-	_light.light_color = Color(0.75, 0.55, 1.0)
-	_light.light_energy = 0.9
-	_light.omni_range = 7.0
+	_light.light_color = Color(1.0, 0.78, 0.55)     # warm lantern so the hero pops against cool stone
+	_light.light_energy = 1.1
+	_light.omni_range = 8.0
 	_light.position = Vector3(0, 2.4, 0.6)
 	add_child(_light)
 	name = "Player"
@@ -117,6 +119,7 @@ func cooldown_fraction(which: String) -> float:
 		"dodge": return clampf(dodge_cd / DODGE_CD, 0.0, 1.0)
 		"ability": return clampf(nova_cd / (NOVA_BASE_CD * float(stats["cd_mult"])), 0.0, 1.0)
 		"heal": return clampf(potion_cd / POTION_CD, 0.0, 1.0)
+		"bomb": return clampf(bomb_cd / 1.2, 0.0, 1.0)
 	return 0.0
 
 # ------------------------------------------------------------------ rig
@@ -129,21 +132,26 @@ func _build_rig() -> void:
 	rig = Node3D.new()
 	rig.name = "Rig"
 	add_child(rig)
-	var cloth := Color(0.2, 0.12, 0.34)
+	var cloth := Color(0.42, 0.27, 0.72)
 	var skin := Color(0.78, 0.65, 0.58)
 	_leg_l = Node3D.new(); _leg_l.position = Vector3(-0.16, 0.62, 0); rig.add_child(_leg_l)
 	_leg_r = Node3D.new(); _leg_r.position = Vector3(0.16, 0.62, 0); rig.add_child(_leg_r)
-	_mk(_leg_l, Vector3(0.24, 0.62, 0.26), Vector3(0, -0.31, 0), Color(0.14, 0.1, 0.2))
-	_mk(_leg_r, Vector3(0.24, 0.62, 0.26), Vector3(0, -0.31, 0), Color(0.14, 0.1, 0.2))
-	_mk(_leg_l, Vector3(0.26, 0.14, 0.34), Vector3(0, -0.6, -0.04), Color(0.1, 0.08, 0.12))
-	_mk(_leg_r, Vector3(0.26, 0.14, 0.34), Vector3(0, -0.6, -0.04), Color(0.1, 0.08, 0.12))
+	_mk(_leg_l, Vector3(0.24, 0.62, 0.26), Vector3(0, -0.31, 0), Color(0.27, 0.2, 0.42))
+	_mk(_leg_r, Vector3(0.24, 0.62, 0.26), Vector3(0, -0.31, 0), Color(0.27, 0.2, 0.42))
+	_mk(_leg_l, Vector3(0.26, 0.14, 0.34), Vector3(0, -0.6, -0.04), Color(0.2, 0.16, 0.24))
+	_mk(_leg_r, Vector3(0.26, 0.14, 0.34), Vector3(0, -0.6, -0.04), Color(0.2, 0.16, 0.24))
 	_torso = _mk(rig, Vector3(0.62, 0.7, 0.36), Vector3(0, 0.98, 0), cloth)
 	_mk(rig, Vector3(0.66, 0.1, 0.4), Vector3(0, 0.66, 0), Color(0.55, 0.3, 0.9), 0.6)       # belt
-	_cape = _mk(rig, Vector3(0.58, 0.9, 0.08), Vector3(0, 0.95, 0.24), Color(0.14, 0.07, 0.24))
+	_cape = _mk(rig, Vector3(0.58, 0.9, 0.08), Vector3(0, 0.95, 0.24), Color(0.12, 0.62, 0.7))
 	_head = _mk(rig, Vector3(0.42, 0.42, 0.42), Vector3(0, 1.58, 0), skin)
-	_hood = _mk(rig, Vector3(0.5, 0.5, 0.5), Vector3(0, 1.62, 0.05), Color(0.16, 0.09, 0.28))
+	_hood = _mk(rig, Vector3(0.5, 0.5, 0.5), Vector3(0, 1.62, 0.05), Color(0.3, 0.2, 0.5))
 	_mk(rig, Vector3(0.34, 0.1, 0.05), Vector3(0, 1.58, -0.24), Color(0.8, 0.5, 1.0), 2.2)   # glowing eyes
 	_helm_part = _mk(rig, Vector3(0.5, 0.2, 0.5), Vector3(0, 1.84, 0.02), Color(0.6, 0.58, 0.68))
+	_mk(rig, Vector3(0.3, 0.14, 0.4), Vector3(-0.4, 1.34, 0), Color(0.7, 0.68, 0.82))          # pauldrons
+	_mk(rig, Vector3(0.3, 0.14, 0.4), Vector3(0.4, 1.34, 0), Color(0.7, 0.68, 0.82))
+	_mk(rig, Vector3(0.2, 0.2, 0.06), Vector3(0, 1.05, -0.2), Color(0.3, 0.95, 1.0), 2.0)      # chest gem
+	_mk(rig, Vector3(0.66, 0.1, 0.4), Vector3(0, 1.36, 0), Color(0.12, 0.62, 0.7))            # scarf
+	VCMats.add_blob(self, 1.5)
 	_arm_l = Node3D.new(); _arm_l.position = Vector3(-0.42, 1.28, 0); rig.add_child(_arm_l)
 	_arm_r = Node3D.new(); _arm_r.position = Vector3(0.42, 1.28, 0); rig.add_child(_arm_r)
 	_mk(_arm_l, Vector3(0.2, 0.62, 0.22), Vector3(0, -0.28, 0), cloth * 1.1)
@@ -180,6 +188,22 @@ func refresh_visuals() -> void:
 		"dagger":
 			VCMats.part(_weapon_root, Vector3(0.08, 0.1, 0.26), Vector3(0, 0, 0.05), Color(0.3, 0.2, 0.15))
 			VCMats.part(_weapon_root, Vector3(0.07, 0.04, 0.56), Vector3(0, 0, -0.4), wcol, em).material_override = VCMats.solid(wcol, em)
+		"spear":
+			VCMats.part(_weapon_root, Vector3(0.07, 0.07, 1.7), Vector3(0, 0, -0.5), Color(0.34, 0.24, 0.17))
+			VCMats.part(_weapon_root, Vector3(0.12, 0.05, 0.5), Vector3(0, 0, -1.5), wcol, em).material_override = VCMats.solid(wcol, em)
+			VCMats.part(_weapon_root, Vector3(0.2, 0.05, 0.12), Vector3(0, 0, -1.2), glow, 0.8)
+		"hammer":
+			VCMats.part(_weapon_root, Vector3(0.1, 0.1, 1.2), Vector3(0, 0, -0.3), Color(0.3, 0.2, 0.15))
+			VCMats.part(_weapon_root, Vector3(0.5, 0.42, 0.62), Vector3(0, 0.05, -1.0), wcol, em).material_override = VCMats.solid(wcol, em)
+			VCMats.part(_weapon_root, Vector3(0.54, 0.1, 0.1), Vector3(0, 0.05, -1.0), glow, 1.0)
+		"crossbow":
+			VCMats.part(_weapon_root, Vector3(0.1, 0.12, 0.7), Vector3(0, 0, -0.3), Color(0.32, 0.22, 0.15))
+			VCMats.part(_weapon_root, Vector3(0.9, 0.06, 0.08), Vector3(0, 0, -0.62), wcol, em).material_override = VCMats.solid(wcol, em)
+			VCMats.part(_weapon_root, Vector3(0.04, 0.04, 0.6), Vector3(0, 0.08, -0.5), glow, 1.0)
+		"staff":
+			VCMats.part(_weapon_root, Vector3(0.08, 0.08, 1.5), Vector3(0, 0, -0.4), Color(0.3, 0.2, 0.14))
+			VCMats.part(_weapon_root, Vector3(0.3, 0.3, 0.3), Vector3(0, 0, -1.3), wcol, 1.8).material_override = VCMats.solid(wcol, 1.8)
+			VCMats.part(_weapon_root, Vector3(0.42, 0.06, 0.42), Vector3(0, 0, -1.3), glow, 1.2)
 		"bow":
 			VCMats.part(_weapon_root, Vector3(0.06, 1.1, 0.08), Vector3(0, 0, -0.2), wcol, em).material_override = VCMats.solid(wcol, em)
 			VCMats.part(_weapon_root, Vector3(0.04, 0.5, 0.04), Vector3(0, 0.55, -0.1), wcol * 0.8).rotation.x = 0.7
@@ -207,6 +231,7 @@ func _physics_process(delta: float) -> void:
 	dodge_cd = maxf(0.0, dodge_cd - delta)
 	nova_cd = maxf(0.0, nova_cd - delta)
 	potion_cd = maxf(0.0, potion_cd - delta)
+	bomb_cd = maxf(0.0, bomb_cd - delta)
 	attack_cd = maxf(0.0, attack_cd - delta)
 	invuln = maxf(0.0, invuln - delta)
 	_buffered_attack = maxf(0.0, _buffered_attack - delta)
@@ -240,6 +265,8 @@ func _physics_process(delta: float) -> void:
 			_try_nova()
 		if VCInput.take("heal"):
 			_try_potion()
+		if VCInput.take("bomb"):
+			_try_bomb()
 		if VCInput.attack_held() or Input.is_action_just_pressed("vc_attack"):
 			_buffered_attack = 0.25
 	else:
@@ -372,15 +399,23 @@ func _do_attack_hit() -> void:
 	if ranged:
 		var proj = world.get_projectile()
 		if proj != null:
+			var kind := String(stats.get("weapon_kind", "bow"))
 			var col := Color(0.4, 1.0, 0.9)
-			proj.fire(global_position + _attack_dir * 0.6, _attack_dir, 21.0, 0.0, false, col, 0.3, float(stats["range"]) / 21.0 + 0.1, 0, 1.0)
+			var spd := 21.0
+			var sz := 0.3
+			match kind:
+				"crossbow":
+					col = Color(1.0, 0.7, 0.35); spd = 30.0; sz = 0.34
+				"staff":
+					col = Color(0.55, 0.65, 1.0); spd = 16.0; sz = 0.4
+			proj.fire(global_position + _attack_dir * 0.6, _attack_dir, spd, 0.0, false, col, sz, float(stats["range"]) / spd + 0.1, 2 if kind == "crossbow" else 0, 1.0)
 		return
 	var arc_deg: float = float(stats["arc"]) * (1.25 if combo % 3 == 2 else 1.0)
 	var reach: float = float(stats["range"]) * (1.15 if combo % 3 == 2 else 1.0)
 	world.fx.slash(global_position, facing, reach, arc_deg, Color(0.85, 0.65, 1.0) if combo % 3 != 2 else Color(1.0, 0.8, 1.0))
 	var hits := 0
 	for t in _targets_in_cone(reach, arc_deg):
-		hit_target(t, _attack_mult, 3.5 if combo % 3 == 2 else 2.2)
+		hit_target(t, _attack_mult, (3.5 if combo % 3 == 2 else 2.2) * (1.8 if String(stats.get("weapon_kind", "")) == "hammer" else 1.0))
 		hits += 1
 	if hits > 0:
 		world.camera_shake(0.12 + 0.05 * float(combo % 3))
@@ -468,6 +503,31 @@ func _try_nova() -> void:
 					n += 1
 	invuln = maxf(invuln, 0.25)
 	ability_used.emit()
+
+# ------------------------------------------------------------------ bomb
+func _try_bomb() -> void:
+	if bomb_cd > 0.0 or state == S.DEAD or profile.bombs <= 0:
+		return
+	profile.bombs -= 1
+	bomb_cd = 1.2
+	var pick := _pick_target()
+	var fwd: Vector3 = pick["dir"]
+	var dist := 6.5
+	if pick["target"] != null:
+		dist = clampf((pick["target"].global_position - global_position).length(), 2.5, 9.0)
+	var land := global_position + fwd * dist
+	var tile: Vector2i = world.data.world_to_tile(land)
+	if not world.data.is_floor(tile.x, tile.y):
+		tile = world.data.nearest_floor(tile)
+		land = world.data.tile_to_world(tile)
+	var avg := (float(stats["dmg_min"]) + float(stats["dmg_max"])) * 0.5
+	var dmg := (avg * 2.6 + 30.0) * float(stats["dmg_mult"]) * float(stats["ability_mult"])
+	var b := VCBomb.new()
+	b.world = world
+	world.add_child(b)
+	b.setup(global_position + Vector3(0, 1.4, 0), land, dmg)
+	world.play_sfx("swing", -2.0, 0.7)
+	bomb_thrown.emit()
 
 # ---------------------------------------------------------------- potion
 func _try_potion() -> void:

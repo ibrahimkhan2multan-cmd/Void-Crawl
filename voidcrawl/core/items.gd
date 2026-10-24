@@ -13,12 +13,26 @@ const BASES := {
 		"range": 2.2, "arc": 95.0, "ranged": false, "color": Color(0.7, 0.4, 1.0)},
 	"wraithbow": {"name": "Wraithbow", "slot": 0, "kind": "bow", "dmg": [9, 13], "interval": 0.58,
 		"range": 15.0, "arc": 0.0, "ranged": true, "color": Color(0.5, 0.9, 0.85)},
+	"oathspear": {"name": "Oathspear", "slot": 0, "kind": "spear", "dmg": [12, 16], "interval": 0.58,
+		"range": 3.9, "arc": 46.0, "ranged": false, "color": Color(0.7, 0.85, 0.95)},
+	"grave_hammer": {"name": "Grave Hammer", "slot": 0, "kind": "hammer", "dmg": [27, 36], "interval": 1.05,
+		"range": 2.9, "arc": 165.0, "ranged": false, "color": Color(0.5, 0.48, 0.58)},
+	"duskbolt": {"name": "Duskbolt Crossbow", "slot": 0, "kind": "crossbow", "dmg": [18, 24], "interval": 0.95,
+		"range": 17.0, "arc": 0.0, "ranged": true, "color": Color(0.6, 0.45, 0.35)},
+	"starless_staff": {"name": "Starless Staff", "slot": 0, "kind": "staff", "dmg": [8, 11], "interval": 0.4,
+		"range": 13.0, "arc": 0.0, "ranged": true, "color": Color(0.45, 0.6, 1.0)},
 	"hollow_cap": {"name": "Hollow Cap", "slot": 1, "kind": "helm", "def": 4, "hp": 10, "color": Color(0.6, 0.58, 0.68)},
 	"crypt_hood": {"name": "Crypt Hood", "slot": 1, "kind": "helm", "def": 2, "hp": 6, "speed": 3, "color": Color(0.35, 0.25, 0.5)},
 	"bone_helm": {"name": "Bone Helm", "slot": 1, "kind": "helm", "def": 6, "hp": 14, "color": Color(0.85, 0.82, 0.74)},
+	"iron_greathelm": {"name": "Iron Greathelm", "slot": 1, "kind": "helm", "def": 9, "hp": 18, "speed": -2, "color": Color(0.55, 0.57, 0.62)},
+	"wraith_mask": {"name": "Wraith Mask", "slot": 1, "kind": "helm", "def": 3, "hp": 8, "crit": 4, "color": Color(0.7, 0.9, 0.95)},
 	"ironbark_vest": {"name": "Ironbark Vest", "slot": 2, "kind": "armor", "def": 8, "hp": 22, "color": Color(0.4, 0.34, 0.28)},
 	"shade_robe": {"name": "Shade Robe", "slot": 2, "kind": "armor", "def": 4, "hp": 14, "crit": 3, "color": Color(0.28, 0.18, 0.42)},
 	"gravemail": {"name": "Gravemail", "slot": 2, "kind": "armor", "def": 13, "hp": 30, "speed": -3, "color": Color(0.45, 0.45, 0.55)},
+	"titan_plate": {"name": "Titan Plate", "slot": 2, "kind": "armor", "def": 18, "hp": 40, "speed": -5, "color": Color(0.62, 0.6, 0.7)},
+	"ember_mail": {"name": "Ember Mail", "slot": 2, "kind": "armor", "def": 10, "hp": 26, "atk_pct": 4, "color": Color(0.85, 0.4, 0.22)},
+	"heartstone": {"name": "Heartstone", "slot": 3, "kind": "trinket", "regen": 60, "hp": 20, "color": Color(1.0, 0.3, 0.45)},
+	"lucky_coin": {"name": "Lucky Coin", "slot": 3, "kind": "trinket", "coin": 25, "color": Color(1.0, 0.85, 0.3)},
 	"ember_charm": {"name": "Ember Charm", "slot": 3, "kind": "trinket", "atk_pct": 6, "color": Color(1.0, 0.5, 0.25)},
 	"void_shard": {"name": "Void Shard", "slot": 3, "kind": "trinket", "cdr": 8, "color": Color(0.75, 0.35, 1.0)},
 	"leech_ring": {"name": "Leech Ring", "slot": 3, "kind": "trinket", "leech": 2, "color": Color(0.9, 0.2, 0.4)},
@@ -34,12 +48,13 @@ const AFFIXES := {
 	"leech": ["+%d%% Life Leech", 1.0, 2.0],
 	"cdr": ["+%d%% Cooldown Reduction", 3.0, 6.0],
 	"coin": ["+%d%% Coin Find", 6.0, 12.0],
+	"regen": ["+%d%% Health Regen", 15.0, 35.0],
 }
 
 const NAME_PREFIX := ["Gloom", "Void", "Ashen", "Hollow", "Umbral", "Wraith", "Dusk", "Grave", "Nether", "Starless"]
 const NAME_SUFFIX := {
 	"atk_pct": "of Ruin", "hp": "of Vigor", "def": "of Warding", "crit": "of Precision",
-	"speed": "of Haste", "leech": "of the Leech", "cdr": "of Echoes", "coin": "of Greed",
+	"speed": "of Haste", "leech": "of the Leech", "cdr": "of Echoes", "coin": "of Greed", "regen": "of Renewal",
 }
 const UNCOMMON_PREFIX := ["Sturdy", "Keen", "Tempered", "Polished"]
 
@@ -98,7 +113,7 @@ static func generate(rng: RandomNumberGenerator, ilvl: int, rarity: int = -1, sl
 		item["dmg_min"] = maxi(1, int(round(float(d[0]) * lm * rm)))
 		item["dmg_max"] = maxi(item["dmg_min"], int(round(float(d[1]) * lm * rm)))
 	else:
-		for k in ["def", "hp", "speed", "crit", "atk_pct", "cdr", "leech"]:
+		for k in ["def", "hp", "speed", "crit", "atk_pct", "cdr", "leech", "coin", "regen"]:
 			if b.has(k):
 				var v: float = float(b[k])
 				if k == "def" or k == "hp":
@@ -146,7 +161,7 @@ static func sanitize(raw: Dictionary) -> Dictionary:
 	item["rarity"] = clampi(int(raw.get("rarity", 0)), 0, 4)
 	item["ilvl"] = maxi(int(raw.get("ilvl", 1)), 1)
 	item["name"] = String(raw.get("name", BASES[item["base"]]["name"]))
-	for k in ["dmg_min", "dmg_max", "def", "hp", "speed", "crit", "atk_pct", "cdr", "leech"]:
+	for k in ["dmg_min", "dmg_max", "def", "hp", "speed", "crit", "atk_pct", "cdr", "leech", "coin", "regen"]:
 		if raw.has(k):
 			item[k] = int(raw[k])
 	var affs: Array = []
@@ -161,7 +176,7 @@ static func totals(equipment: Dictionary) -> Dictionary:
 	var t := {
 		"dmg_min": 3.0, "dmg_max": 4.0, "interval": 0.5, "range": 2.2, "arc": 100.0, "ranged": false,
 		"kind": "fist", "def": 0.0, "hp": 0.0, "speed": 0.0, "crit": 0.0, "atk_pct": 0.0,
-		"cdr": 0.0, "leech": 0.0, "coin": 0.0,
+		"cdr": 0.0, "leech": 0.0, "coin": 0.0, "regen": 0.0,
 	}
 	for slot in equipment:
 		var it: Dictionary = equipment[slot]
@@ -178,7 +193,7 @@ static func totals(equipment: Dictionary) -> Dictionary:
 			t["arc"] = float(b["arc"])
 			t["ranged"] = bool(b["ranged"])
 			t["kind"] = String(b["kind"])
-		for k in ["def", "hp", "speed", "crit", "atk_pct", "cdr", "leech"]:
+		for k in ["def", "hp", "speed", "crit", "atk_pct", "cdr", "leech", "coin", "regen"]:
 			if it.has(k):
 				t[k] += float(it[k])
 		for a in it.get("affixes", []):
@@ -215,6 +230,10 @@ static func describe(item: Dictionary) -> Array:
 		lines.append("+%d%% Cooldown Reduction" % item["cdr"])
 	if item.has("leech"):
 		lines.append("+%d%% Life Leech" % item["leech"])
+	if item.has("coin"):
+		lines.append("+%d%% Coin Find" % item["coin"])
+	if item.has("regen"):
+		lines.append("+%d%% Health Regen" % item["regen"])
 	for a in item.get("affixes", []):
 		lines.append(affix_text(a))
 	return lines
@@ -230,7 +249,7 @@ static func score(item: Dictionary) -> float:
 		s += avg / float(b["interval"]) * 2.0
 	s += float(item.get("def", 0)) * 2.0 + float(item.get("hp", 0)) * 0.6
 	s += float(item.get("speed", 0)) * 2.0 + float(item.get("crit", 0)) * 3.0
-	s += float(item.get("atk_pct", 0)) * 3.0 + float(item.get("cdr", 0)) * 2.0 + float(item.get("leech", 0)) * 6.0
+	s += float(item.get("atk_pct", 0)) * 3.0 + float(item.get("cdr", 0)) * 2.0 + float(item.get("leech", 0)) * 6.0 + float(item.get("regen", 0)) * 0.5 + float(item.get("coin", 0)) * 0.4
 	for a in item.get("affixes", []):
 		match String(a["id"]):
 			"atk_pct": s += float(a["val"]) * 3.0
@@ -241,6 +260,7 @@ static func score(item: Dictionary) -> float:
 			"leech": s += float(a["val"]) * 6.0
 			"cdr": s += float(a["val"]) * 2.0
 			"coin": s += float(a["val"]) * 0.4
+			"regen": s += float(a["val"]) * 0.5
 	return s
 
 static func sell_value(item: Dictionary) -> int:

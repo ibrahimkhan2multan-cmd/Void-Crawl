@@ -12,6 +12,9 @@ const THEME_COL := {
 	"overgrown": [Color(0.16, 0.29, 0.20), Color(0.33, 0.42, 0.35)],
 	"void": [Color(0.15, 0.09, 0.24), Color(0.31, 0.18, 0.48)],
 	"corridor": [Color(0.24, 0.23, 0.29), Color(0.37, 0.35, 0.44)],
+	"ash": [Color(0.30, 0.22, 0.22), Color(0.46, 0.34, 0.32)],
+	"forge": [Color(0.27, 0.19, 0.17), Color(0.5, 0.3, 0.22)],
+	"magma": [Color(0.24, 0.1, 0.09), Color(0.5, 0.2, 0.14)],
 }
 
 var data: VCDungeonData
@@ -120,6 +123,12 @@ func _build_tiles() -> void:
 				var f: Color = cols[0] * _jit(x, y, 0.16)
 				if (x + y) % 2 == 0:
 					f = f * 0.93
+				# fake ambient occlusion: tiles hugging a wall are darker
+				var rock_n := 0
+				for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					if data.get_tile(x + dd.x, y + dd.y) == VCDungeonData.T_ROCK:
+						rock_n += 1
+				f = f * (1.0 - 0.11 * float(rock_n))
 				f.a = 1.0
 				_add(_floor_chunks, wpos + Vector3(0, -0.25, 0), Vector3(T, 0.5, T), f)
 			elif t == VCDungeonData.T_ROCK:
@@ -228,10 +237,11 @@ func _build_lights() -> void:
 		var wt2: Vector2i = wc["tile"]
 		var f2: Vector2i = wc["facing"]
 		var p2 := data.tile_to_world(wt2) + Vector3(float(f2.x), 0, float(f2.y)) * (T * 0.5 - 0.1)
-		var c := Color(0.55, 0.25, 1.0)
+		var ember: bool = String(VCMissions.get_mission(data.mission_id).get("palette", "")) == "ember"
+		var c := Color(1.0, 0.42, 0.1) if ember else Color(0.55, 0.25, 1.0)
 		_add(_glow_chunks, p2 + Vector3(0, 1.2, 0), Vector3(0.4, 1.0, 0.4), c, Vector3(0.0, 0.4, 0.3))
 		_add(_glow_chunks, p2 + Vector3(0.3, 0.8, 0.0), Vector3(0.28, 0.6, 0.28), c * 0.9, Vector3(0.0, 0.1, -0.35))
-		_add_light(p2 + Vector3(float(f2.x), 1.4, float(f2.y)) * 0.6, Color(0.6, 0.32, 1.0), 1.4, 7.0, 0.1)
+		_add_light(p2 + Vector3(float(f2.x), 1.4, float(f2.y)) * 0.6, Color(1.0, 0.45, 0.15) if ember else Color(0.6, 0.32, 1.0), 1.4, 7.0, 0.1)
 	for br in data.braziers:
 		var bp := data.tile_to_world(br["tile"])
 		_add(_wall_chunks, bp + Vector3(0, 0.35, 0), Vector3(0.5, 0.7, 0.5), Color(0.22, 0.2, 0.25))

@@ -8,6 +8,9 @@ extends VCEnemy
 
 signal phase_changed(phase)
 
+func _gc() -> Color:
+	return def.get("glow", Color(0.85, 0.4, 1.0))
+
 var phase := 1
 var _atk := ""
 var _last_atk := ""
@@ -32,8 +35,8 @@ func _build_rig() -> void:
 	rig.name = "Rig"
 	add_child(rig)
 	var bone := Color(0.74, 0.7, 0.66)
-	var iron := Color(0.2, 0.19, 0.26)
-	var glow := Color(0.78, 0.3, 1.0)
+	var iron: Color = def.get("body", Color(0.2, 0.19, 0.26))
+	var glow: Color = def.get("glow", Color(0.78, 0.3, 1.0))
 	_leg_l = _limb(rig, Vector3(-0.22, 0.7, 0)); _leg_r = _limb(rig, Vector3(0.22, 0.7, 0))
 	_mk(_leg_l, Vector3(0.26, 0.72, 0.28), Vector3(0, -0.36, 0), iron)
 	_mk(_leg_r, Vector3(0.26, 0.72, 0.28), Vector3(0, -0.36, 0), iron)
@@ -63,7 +66,7 @@ func _build_rig() -> void:
 	_mk(_arm_r, Vector3(0.18, 0.5, 1.4), Vector3(0, -0.85, -1.2), Color(0.5, 0.48, 0.6))
 	_mk(_arm_r, Vector3(0.2, 0.08, 1.4), Vector3(0, -1.12, -1.2), glow, 2.2)
 	# cape
-	_mk(rig, Vector3(0.9, 1.3, 0.08), Vector3(0, 1.3, 0.32), Color(0.16, 0.08, 0.26))
+	_mk(rig, Vector3(0.9, 1.3, 0.08), Vector3(0, 1.3, 0.32), iron * 0.8)
 	# orbiting shards
 	_orbit = Node3D.new()
 	_orbit.position = Vector3(0, 1.4, 0)
@@ -108,8 +111,8 @@ func _begin_shift() -> void:
 	_cd = 1.0
 	world.play_sfx("boss_roar")
 	world.camera_shake(0.8)
-	world.fx.ring(global_position, 9.0, Color(0.85, 0.4, 1.0), 0.8)
-	world.fx.burst(global_position + Vector3(0, 2.0, 0), Color(0.85, 0.4, 1.0), 30, 9.0, 1.6)
+	world.fx.ring(global_position, 9.0, _gc(), 0.8)
+	world.fx.burst(global_position + Vector3(0, 2.0, 0), _gc(), 30, 9.0, 1.6)
 	# shove the hero out of melee range (no damage)
 	var away: Vector3 = world.player.global_position - global_position
 	away.y = 0.0
@@ -303,7 +306,7 @@ func _fire_ring(n: int, offset: float) -> void:
 		var dv := Vector3(sin(a), 0, cos(a))
 		var proj = world.get_projectile()
 		if proj != null:
-			proj.fire(global_position + dv * 1.4, dv, 6.5, dmg * 0.55, true, Color(0.95, 0.3, 1.0), 0.4, 4.5)
+			proj.fire(global_position + dv * 1.4, dv, 6.5, dmg * 0.55, true, _gc(), 0.4, 4.5)
 
 func _do_summon() -> void:
 	_summon_cd = 18.0
@@ -317,7 +320,7 @@ func _do_summon() -> void:
 		if e != null:
 			_adds.append(e)
 			n += 1
-	world.fx.ring(global_position, 7.0, Color(0.7, 0.3, 1.0), 0.6)
+	world.fx.ring(global_position, 7.0, _gc(), 0.6)
 
 func _spawn_rifts() -> void:
 	var pp: Vector3 = world.player.global_position
@@ -340,10 +343,10 @@ func _tick_rifts(delta: float) -> void:
 			keep.append(r)
 			continue
 		if int(r["tele"]) < 0:
-			r["tele"] = world.fx.telegraph(r["pos"], 0.0, "circle", 2.2, 360.0, float(r["life"]), Color(0.85, 0.2, 1.0))
+			r["tele"] = world.fx.telegraph(r["pos"], 0.0, "circle", 2.2, 360.0, float(r["life"]), _gc())
 		if r["t"] >= float(r["life"]):
-			world.fx.ring(r["pos"], 2.4, Color(0.9, 0.3, 1.0), 0.35)
-			world.fx.burst(r["pos"] + Vector3(0, 0.4, 0), Color(0.9, 0.4, 1.0), 14, 6.0, 1.0)
+			world.fx.ring(r["pos"], 2.4, _gc(), 0.35)
+			world.fx.burst(r["pos"] + Vector3(0, 0.4, 0), _gc(), 14, 6.0, 1.0)
 			world.camera_shake(0.25)
 			world.play_sfx("hit", -2.0, 0.6)
 			var pl = world.player

@@ -3,7 +3,7 @@ extends Node3D
 ## Loot lying on the floor: coins, equipment, health potions. Tossed out, settles, then
 ## magnetises to the hero. Collection is resolved by the mission via collect().
 
-enum Kind { COIN, ITEM, POTION, HEART }
+enum Kind { COIN, ITEM, POTION, HEART, BOMB }
 
 var world: Node = null
 var kind: int = Kind.COIN
@@ -55,6 +55,13 @@ func setup_potion() -> void:
 	add_child(_body)
 	VCMats.part(_body, Vector3(0.36, 0.42, 0.36), Vector3.ZERO, VCDefs.COL_HP, 1.0)
 	VCMats.part(_body, Vector3(0.16, 0.18, 0.16), Vector3(0, 0.28, 0), Color(0.85, 0.85, 0.9))
+
+func setup_bomb() -> void:
+	kind = Kind.BOMB
+	_body = Node3D.new()
+	add_child(_body)
+	VCMats.part(_body, Vector3(0.4, 0.4, 0.4), Vector3.ZERO, Color(0.25, 0.15, 0.35), 0.3)
+	VCMats.part(_body, Vector3(0.1, 0.16, 0.1), Vector3(0, 0.28, 0), Color(1.0, 0.7, 0.3), 2.0)
 
 func setup_heart() -> void:
 	kind = Kind.HEART

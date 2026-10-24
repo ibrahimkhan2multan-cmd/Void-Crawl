@@ -67,6 +67,7 @@ func _relayout() -> void:
 		"dodge": {"c": Vector2(cx - sign_ * 138.0 * unit, cy + 26.0 * unit), "r": 48.0 * unit},
 		"ability": {"c": Vector2(cx - sign_ * 98.0 * unit, cy - 98.0 * unit), "r": 48.0 * unit},
 		"heal": {"c": Vector2(cx + sign_ * 6.0 * unit, cy - 150.0 * unit), "r": 40.0 * unit},
+		"bomb": {"c": Vector2(cx - sign_ * 210.0 * unit, cy - 64.0 * unit), "r": 40.0 * unit},
 		"interact": {"c": Vector2(cx - sign_ * 20.0 * unit, cy - 250.0 * unit), "r": 54.0 * unit},
 	}
 	var tr := size_v.x - float(m["right"]) - 8.0
@@ -204,6 +205,7 @@ func _button_down(id: String) -> void:
 		"dodge": VCInput.press("dodge")
 		"ability": VCInput.press("ability")
 		"heal": VCInput.press("heal")
+		"bomb": VCInput.press("bomb")
 		"interact": VCInput.press("interact")
 	VC.vibrate(8)
 
@@ -264,11 +266,13 @@ func _draw_button(id: String, a: float) -> void:
 	var c: Vector2 = _layout[id]["c"]
 	var r: float = _layout[id]["r"]
 	var down: bool = _held.has(id)
-	var cd := _cooldown(id) if id in ["dodge", "ability", "heal"] else 0.0
+	var cd := _cooldown(id) if id in ["dodge", "ability", "heal", "bomb"] else 0.0
 	var potions := 0
+	var bombs := 0
 	if player != null and player.profile != null:
 		potions = player.profile.potions
-	var disabled := (id == "heal" and potions <= 0)
+		bombs = player.profile.bombs
+	var disabled := (id == "heal" and potions <= 0) or (id == "bomb" and bombs <= 0)
 	var fill := Color(0.1, 0.05, 0.2, 0.55 * a)
 	var edge := Color(0.7, 0.45, 1.0, 0.9 * a)
 	match id:
@@ -277,6 +281,8 @@ func _draw_button(id: String, a: float) -> void:
 			edge = Color(0.95, 0.7, 1.0, 0.95 * a)
 		"heal":
 			edge = Color(1.0, 0.4, 0.55, 0.95 * a)
+		"bomb":
+			edge = Color(1.0, 0.65, 0.3, 0.95 * a)
 		"interact":
 			var pul := 0.75 + 0.25 * sin(_pulse * 6.0)
 			fill = Color(0.3, 0.2, 0.05, 0.7 * a)
@@ -310,6 +316,12 @@ func _draw_button(id: String, a: float) -> void:
 			draw_colored_polygon(PackedVector2Array([c + Vector2(-k * 0.28, -k * 0.5), c + Vector2(k * 0.28, -k * 0.5), c + Vector2(k * 0.8, k * 0.9), c + Vector2(-k * 0.8, k * 0.9)]), Color(1.0, 0.3, 0.45, ic.a) if not disabled else ic)
 			var font := ThemeDB.fallback_font
 			draw_string(font, c + Vector2(r * 0.3, r * 0.95), str(potions), HORIZONTAL_ALIGNMENT_LEFT, -1, int(r * 0.7), Color(1, 1, 1, a))
+		"bomb":
+			draw_circle(c + Vector2(0, k * 0.2), k * 0.8, ic)
+			draw_line(c + Vector2(k * 0.4, -k * 0.4), c + Vector2(k * 0.8, -k * 0.9), ic, 4.0, true)
+			draw_circle(c + Vector2(k * 0.85, -k * 1.0), k * 0.2, Color(1.0, 0.7, 0.3, ic.a))
+			var fb := ThemeDB.fallback_font
+			draw_string(fb, c + Vector2(r * 0.3, r * 0.95), str(bombs), HORIZONTAL_ALIGNMENT_LEFT, -1, int(r * 0.7), Color(1, 1, 1, a))
 		"interact":
 			draw_colored_polygon(PackedVector2Array([c + Vector2(0, -k * 1.1), c + Vector2(k * 0.8, 0), c + Vector2(0, k * 1.1), c + Vector2(-k * 0.8, 0)]), ic)
 			var f2 := ThemeDB.fallback_font

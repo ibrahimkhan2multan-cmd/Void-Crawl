@@ -59,6 +59,11 @@ const ENEMY_WISP := "wisp"
 const ENEMY_BRUTE := "brute"
 const ENEMY_SPIDER := "spiderling"
 const ENEMY_WARDEN := "warden"
+const ENEMY_SHIELD := "shieldbearer"
+const ENEMY_MITE := "embermite"
+const ENEMY_CULTIST := "cultist"
+const ENEMY_WEAVER := "necromancer"
+const ENEMY_COLOSSUS := "colossus"
 
 # --- Attributes -------------------------------------------------------------
 const ATTR_IDS := ["str", "vit", "agi", "arc"]

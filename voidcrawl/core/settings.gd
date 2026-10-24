@@ -70,6 +70,7 @@ static func apply(viewport: Viewport = null) -> void:
 	Engine.max_fps = int(values["fps"])
 	if viewport != null:
 		var q := quality_profile()
-		viewport.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
-		viewport.scaling_3d_scale = float(q["scale_3d"])
+		# 3D resolution scaling is deliberately NOT used: it is unreliable in the Compatibility
+		# renderer on some Mali/PowerVR drivers. Quality presets reduce lights, fog, glow and particles instead.
+		viewport.scaling_3d_scale = 1.0
 		viewport.msaa_3d = Viewport.MSAA_2X if int(q["msaa"]) == 2 else Viewport.MSAA_DISABLED

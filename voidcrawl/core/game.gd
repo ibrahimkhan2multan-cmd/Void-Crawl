@@ -131,7 +131,15 @@ func play_sfx(name: String, volume_db: float = 0.0, pitch: float = 1.0) -> void:
 func play_music(kind: String) -> void:
 	_want_music = kind
 
+var _crumb_t := 0.0
+
 func _process(_delta: float) -> void:
+	_crumb_t -= _delta
+	if _crumb_t <= 0.0 and autosave:
+		_crumb_t = 2.0
+		VCCrashGuard.crumb()
+	if _delta > 0.75 and autosave:
+		VCCrashGuard.crumb("HITCH %.2fs" % _delta)
 	if _want_music != _current_music and _want_music != "" and play_audio:
 		_audio_mutex.lock()
 		var s: AudioStream = _music_cache.get(_want_music)

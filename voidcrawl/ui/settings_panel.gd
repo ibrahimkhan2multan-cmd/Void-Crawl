@@ -129,7 +129,7 @@ func _build() -> void:
 	_toggle("Show FPS counter", "show_fps")
 	_toggle("Damage numbers", "damage_numbers")
 	_slider("Screen shake", "screen_shake", 0.0, 1.5, 0.1)
-	_scroll_box.add_child(VCUI.label("Low renders at 62% resolution with 3 lights and no fog. Use it if the game stutters.", 16, VCDefs.COL_TEXT_DIM))
+	_scroll_box.add_child(VCUI.label("Low uses 3 lights, no fog and fewer particles. Use it if the game stutters.", 16, VCDefs.COL_TEXT_DIM))
 	_section("CONTROLS")
 	_toggle("Left-handed layout", "left_handed")
 	_toggle("Floating joystick", "joy_floating")

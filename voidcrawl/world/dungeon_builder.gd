@@ -29,6 +29,11 @@ var _wall_chunks: Dictionary = {}
 var _glow_chunks: Dictionary = {}
 var _rng := RandomNumberGenerator.new()
 var _quality: Dictionary = {}
+var _step: Callable = Callable()
+
+func _yield() -> void:
+	if _step.is_valid():
+		await _step.call()
 
 func _init() -> void:
 	name = "DungeonGeometry"
@@ -40,7 +45,10 @@ static func _make_world_material(fade: bool) -> ShaderMaterial:
 	m.set_shader_parameter("fade_enabled", 1.0 if fade else 0.0)
 	return m
 
-func build(d: VCDungeonData, quality: Dictionary) -> void:
+## Pass a `step` Callable (it should await a frame) to spread the work over many frames so a
+## slow phone never freezes for seconds (Android reports a frozen UI as a crash / ANR).
+func build(d: VCDungeonData, quality: Dictionary, step: Callable = Callable()) -> void:
+	_step = step
 	data = d
 	_quality = quality
 	_rng.seed = d.seed * 7919 + 13
@@ -53,15 +61,15 @@ func build(d: VCDungeonData, quality: Dictionary) -> void:
 	world_body.collision_layer = VCDefs.L_WORLD
 	world_body.collision_mask = 0
 	add_child(world_body)
-	_build_tiles()
-	_build_collision()
-	_build_decor()
-	_build_lights()
-	_build_runes()
-	_build_secrets()
-	_flush_chunks(_floor_chunks, floor_mat, "Floor")
-	_flush_chunks(_wall_chunks, wall_mat, "Walls")
-	_flush_chunks(_glow_chunks, glow_mat, "Glow")
+	await _build_tiles()
+	await _build_collision()
+	await _build_decor()
+	await _build_lights()
+	await _build_runes()
+	await _build_secrets()
+	await _flush_chunks(_floor_chunks, floor_mat, "Floor")
+	await _flush_chunks(_wall_chunks, wall_mat, "Walls")
+	await _flush_chunks(_glow_chunks, glow_mat, "Glow")
 
 # ------------------------------------------------------------------ batching
 func _add(chunks: Dictionary, center: Vector3, size: Vector3, color: Color, rot: Vector3 = Vector3.ZERO) -> void:
@@ -76,6 +84,7 @@ func _flush_chunks(chunks: Dictionary, mat: Material, label: String) -> void:
 	var unit := BoxMesh.new()
 	unit.size = Vector3.ONE
 	for key in chunks:
+		await _yield()
 		var c: Dictionary = chunks[key]
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -114,6 +123,8 @@ func _near_floor(x: int, y: int) -> bool:
 func _build_tiles() -> void:
 	var T := VCDefs.TILE
 	for y in data.h:
+		if y % 4 == 0:
+			await _yield()
 		for x in data.w:
 			var t := data.get_tile(x, y)
 			var wpos := data.tile_to_world(Vector2i(x, y))
@@ -143,6 +154,8 @@ func _build_tiles() -> void:
 func _build_collision() -> void:
 	var T := VCDefs.TILE
 	for y in data.h:
+		if y % 6 == 0:
+			await _yield()
 		var x := 0
 		while x < data.w:
 			if data.get_tile(x, y) == VCDungeonData.T_ROCK and _near_floor(x, y):

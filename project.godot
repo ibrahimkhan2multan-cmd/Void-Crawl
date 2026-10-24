@@ -15,7 +15,7 @@ config/description="VOIDCRAWL - a blocky 3D dark-fantasy dungeon crawler by Infi
 config/quit_on_go_back=false
 run/main_scene="res://voidcrawl/scenes/main_menu.tscn"
 config/features=PackedStringArray("4.7")
-config/version="0.2.0"
+config/version="0.2.1"
 config/icon="res://icon.png"
 
 [autoload]

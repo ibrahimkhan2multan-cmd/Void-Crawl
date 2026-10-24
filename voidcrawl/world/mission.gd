@@ -80,6 +80,7 @@ var _hint_shown: Dictionary = {}
 var _defeat_shown := false
 var _time := 0.0
 var _resume_pause_pending := false
+var _ctx_t := 0.0
 var _env: WorldEnvironment
 var _sun: DirectionalLight3D
 
@@ -143,7 +144,7 @@ func _build() -> void:
 	add_child(_sun)
 	builder = VCDungeonBuilder.new()
 	add_child(builder)
-	builder.build(data, q)
+	await builder.build(data, q, Callable() if fast_build else func(): await get_tree().process_frame)
 	await _step(0.55, "Lighting the torches...")
 	_enemy_root = Node3D.new(); _enemy_root.name = "Enemies"; add_child(_enemy_root)
 	_pickup_root = Node3D.new(); _pickup_root.name = "Pickups"; add_child(_pickup_root)
@@ -205,6 +206,7 @@ func _build() -> void:
 	touch.inventory_pressed.connect(func(): open_overlay("pack"))
 	await _step(0.8, "Waking the dead...")
 	_restore_run_state()
+	await _step(0.85, "Placing treasure...")
 	_spawn_world_objects()
 	_place_player()
 	cam_rig.snap_to(player.global_position)
@@ -506,6 +508,10 @@ func _physics_process(delta: float) -> void:
 		touch.release_all()
 
 func _tick_exploration(delta: float) -> void:
+	_ctx_t -= delta
+	if _ctx_t <= 0.0:
+		_ctx_t = 1.0
+		VCCrashGuard.context = "%s seed=%d room=%d enemies=%d pickups=%d proj=%d hp=%d" % [mission_id, seed_, _last_room, enemies.size(), pickups.size(), _projectiles.size(), int(player.hp)]
 	_mini_t -= delta
 	if _mini_t <= 0.0:
 		_mini_t = 0.2

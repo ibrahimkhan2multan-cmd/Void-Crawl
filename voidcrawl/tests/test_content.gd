@@ -133,7 +133,7 @@ static func _enemies(t: Node) -> void:
 			e.queue_free()
 	m.enemies.clear()
 	var mite := m.spawn_enemy_at("embermite", pl.global_position + Vector3(3, 0, 0), 0, 3)
-	await GP._wait_until(t, func(): return not is_instance_valid(mite) or not mite.is_alive(), 60 * 10)
+	await GP._wait_until(t, func(): return not is_instance_valid(mite) or mite.state == VCEnemy.S.DEAD, 60 * 10)
 	await GP._frames(t, 5)
 	t.check("embermite explodes and hurts the hero", pl.hp < float(pl.max_hp))
 	# shield block

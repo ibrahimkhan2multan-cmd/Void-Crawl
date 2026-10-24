@@ -51,6 +51,9 @@ func _run() -> void:
 		_test_items_and_profile()
 	if _wanted("save"):
 		_test_save_and_settings()
+	if _suite_filter == "content":
+		await load("res://voidcrawl/tests/test_content.gd").run(self)
+		return
 	if _suite_filter == "soak":
 		await load("res://voidcrawl/tests/soak.gd").run(self)
 		return

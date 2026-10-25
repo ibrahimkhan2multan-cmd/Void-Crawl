@@ -477,11 +477,14 @@ func _process(delta: float) -> void:
 	if not build_done:
 		return
 	_time += delta
+	VCCrashGuard.mark("proc:fade")
 	_update_fade_uniforms()
 	_light_t -= delta
 	if _light_t <= 0.0:
 		_light_t = 0.12
+		VCCrashGuard.mark("proc:lights")
 		builder.update_lights(player.global_position, int(VCSettings.quality_profile()["max_lights"]), _time)
+	VCCrashGuard.mark("proc:end(render next)")
 
 func _update_fade_uniforms() -> void:
 	var cam := cam_rig.cam
@@ -516,13 +519,20 @@ func _physics_process(delta: float) -> void:
 			open_overlay("pause")
 		elif VCInput.take("inventory"):
 			open_overlay("pack")
+	VCCrashGuard.mark("phys:pickups")
 	_tick_pickups_cap()
 	if player.is_alive():
+		VCCrashGuard.mark("phys:explore")
 		_tick_exploration(delta)
+		VCCrashGuard.mark("phys:encounters")
 		_tick_encounters()
+		VCCrashGuard.mark("phys:interact")
 		_tick_interaction()
+		VCCrashGuard.mark("phys:marker")
 		_tick_marker()
+		VCCrashGuard.mark("phys:gate")
 		_tick_gate()
+	VCCrashGuard.mark("phys:end")
 	_autosave_t += delta
 	touch.active = overlay_open == "" and not finished
 	if overlay_open != "":
@@ -542,10 +552,12 @@ func _tick_exploration(delta: float) -> void:
 	var rid := data.room_at(data.world_to_tile(player.global_position))
 	if rid != _last_room:
 		_last_room = rid
+		VCCrashGuard.mark("enter_room %d" % rid)
 		if rid >= 0:
 			_on_enter_room(rid)
 
 func _on_enter_room(rid: int) -> void:
+	VCCrashGuard.stage("room:%d type=%s" % [rid, String(data.rooms[rid]["type"])])
 	var r: Dictionary = data.rooms[rid]
 	var st: Dictionary = rooms_state[rid]
 	if bool(st.get("seen", false)):

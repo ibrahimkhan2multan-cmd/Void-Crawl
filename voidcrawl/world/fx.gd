@@ -66,6 +66,8 @@ func configure(quality: Dictionary) -> void:
 
 # ------------------------------------------------------------------ numbers
 func number(pos: Vector3, text: String, color: Color = Color.WHITE, big: bool = false) -> void:
+	if VCCrashGuard.level >= 3:
+		return
 	if not show_numbers:
 		return
 	var slot: Dictionary = {}
@@ -88,6 +90,8 @@ func number(pos: Vector3, text: String, color: Color = Color.WHITE, big: bool = 
 
 # ------------------------------------------------------------------- bursts
 func burst(pos: Vector3, color: Color, amount: int = 12, speed: float = 4.0, size: float = 1.0) -> void:
+	if VCCrashGuard.level >= 2:
+		return
 	var p: CPUParticles3D = _bursts[_burst_i]
 	_burst_i = (_burst_i + 1) % BURST_POOL
 	var n := maxi(2, int(float(amount) * particle_scale))
@@ -187,6 +191,8 @@ func cancel(slot_id: int) -> void:
 
 ## Pulsing violet pillar used when enemies materialise.
 func spawn_pillar(pos: Vector3, life: float = 0.7) -> void:
+	if VCCrashGuard.level >= 3:
+		return
 	var d := _decal_slot()
 	var mi: MeshInstance3D = d["node"]
 	mi.mesh = VCMats.box(Vector3(1.0, 1.0, 1.0))

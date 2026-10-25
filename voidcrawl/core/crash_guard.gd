@@ -12,6 +12,11 @@ const CRUMBS_PREV := "user://breadcrumbs_prev.txt"
 
 static var crashed_last_time := false
 static var context := ""            # set by the mission: room, enemy count, etc.
+const MARK := "user://lastmark.txt"
+const MARK_PREV := "user://lastmark_prev.txt"
+static var _mark_file: FileAccess = null
+static var mark_n := 0
+static var level := 0               ## graphics/feature fallback level (0 normal ... 4 minimal); raised by each crash
 static var _crumb_lines: PackedStringArray = PackedStringArray()
 
 ## Called every ~2 s from the autoload. Writes a one-line state snapshot and flushes it to
@@ -31,8 +36,28 @@ static func crumb(extra: String = "") -> void:
 		f.store_string("\n".join(_crumb_lines))
 		f.close()
 
+## Overwrites ONE line on disk (flushed immediately). After a native crash it shows the very last
+## thing the game did, down to the frame. Cheap: fixed-size write at offset 0.
+static func mark(label: String) -> void:
+	if _mark_file == null:
+		_mark_file = FileAccess.open(MARK, FileAccess.WRITE)
+		if _mark_file == null:
+			return
+	mark_n += 1
+	_mark_file.seek(0)
+	var line := "%d|%s|%s" % [mark_n, label, context]
+	_mark_file.store_string(line.substr(0, 220).rpad(220) + "\n")
+	_mark_file.flush()
+
 static func on_start() -> void:
 	crashed_last_time = FileAccess.file_exists(FLAG)
+	level = int(VCSettings.values.get("crash_level", 0))
+	if FileAccess.file_exists(MARK):
+		var mo := FileAccess.get_file_as_string(MARK)
+		var mp := FileAccess.open(MARK_PREV, FileAccess.WRITE)
+		if mp != null:
+			mp.store_string(mo)
+			mp.close()
 	if FileAccess.file_exists(CRUMBS):
 		var old := FileAccess.get_file_as_string(CRUMBS)
 		var pf := FileAccess.open(CRUMBS_PREV, FileAccess.WRITE)
@@ -41,12 +66,14 @@ static func on_start() -> void:
 			pf.close()
 	if crashed_last_time:
 		VCSettings.values["safe_mode"] = true          # next run uses the plain, safest graphics
+		level = mini(level + 1, 4)                      # and each further crash strips more features
+		VCSettings.values["crash_level"] = level
 		VCSettings.save_settings()
 		var txt := _previous_log_text()
 		var f := FileAccess.open(REPORT, FileAccess.WRITE)
 		if f != null:
 			f.store_string("VOIDCRAWL possible crash report\nversion %s\ndevice %s | %s | gpu %s\ntime %s\n\n--- last state snapshots before the crash ---\n%s\n\n%s" % [
-				String(ProjectSettings.get_setting("application/config/version", "?")), OS.get_model_name(), OS.get_version(),
+				String(ProjectSettings.get_setting("application/config/version", "?")) + " fallback_level_now=%d" % level + "\nLAST MARK BEFORE CRASH (frame|phase|state): " + FileAccess.get_file_as_string(MARK_PREV).strip_edges(), OS.get_model_name(), OS.get_version(),
 				RenderingServer.get_video_adapter_name(), Time.get_datetime_string_from_system(), _tail(CRUMBS_PREV, 24), txt])
 			f.close()
 	elif FileAccess.file_exists(REPORT):

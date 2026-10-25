@@ -239,6 +239,8 @@ func _build_decor() -> void:
 
 # -------------------------------------------------------------------- lights
 func _add_light(pos: Vector3, color: Color, energy: float, rng_m: float, flicker: float) -> void:
+	if VCCrashGuard.level >= 2:
+		return          # fallback level 2+: no managed point lights at all
 	var l := OmniLight3D.new()
 	l.light_color = color
 	l.light_energy = energy

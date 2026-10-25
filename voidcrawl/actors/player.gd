@@ -92,7 +92,11 @@ func _ready() -> void:
 	_light.light_energy = 1.1
 	_light.omni_range = 8.0
 	_light.position = Vector3(0, 2.4, 0.6)
-	add_child(_light)
+	if VCCrashGuard.level >= 2:
+		_light.free()
+		_light = null
+	else:
+		add_child(_light)
 	name = "Player"
 
 func bind(p: VCProfile) -> void:
@@ -221,7 +225,8 @@ func refresh_visuals() -> void:
 	_helm_part.visible = not helm.is_empty()
 	if not helm.is_empty():
 		_helm_part.material_override = VCMats.solid(VCItems.base_color(helm), 0.3 if int(helm["rarity"]) >= 3 else 0.0)
-	_light.light_color = Color(0.75, 0.55, 1.0).lerp(glow, 0.25)
+	if _light != null:
+		_light.light_color = Color(0.75, 0.55, 1.0).lerp(glow, 0.25)
 
 # ----------------------------------------------------------------- tick
 func _physics_process(delta: float) -> void:

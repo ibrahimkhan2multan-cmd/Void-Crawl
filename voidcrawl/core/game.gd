@@ -109,7 +109,7 @@ func _get_sfx(name: String) -> AudioStream:
 	return s   # null until the worker has produced it; the sound is simply skipped
 
 func play_sfx(name: String, volume_db: float = 0.0, pitch: float = 1.0) -> void:
-	if not play_audio:
+	if not play_audio or VCCrashGuard.level >= 4:
 		return
 	var s := _get_sfx(name)
 	if s == null:
@@ -134,13 +134,14 @@ func play_music(kind: String) -> void:
 var _crumb_t := 0.0
 
 func _process(_delta: float) -> void:
+	VCCrashGuard.mark("vc:frame")
 	_crumb_t -= _delta
 	if _crumb_t <= 0.0 and autosave:
 		_crumb_t = 2.0
 		VCCrashGuard.crumb()
 	if _delta > 0.75 and autosave:
 		VCCrashGuard.crumb("HITCH %.2fs" % _delta)
-	if _want_music != _current_music and _want_music != "" and play_audio:
+	if _want_music != _current_music and _want_music != "" and play_audio and VCCrashGuard.level < 4:
 		_audio_mutex.lock()
 		var s: AudioStream = _music_cache.get(_want_music)
 		_audio_mutex.unlock()

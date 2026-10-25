@@ -16,10 +16,9 @@ static func _wav(samples: PackedFloat32Array, rate: int, loop: bool = false) -> 
 	for i in samples.size():
 		b.encode_s16(i * 2, int(clampf(samples[i], -1.0, 1.0) * 32000.0))
 	s.data = b
-	if loop:
-		s.loop_mode = AudioStreamWAV.LOOP_FORWARD
-		s.loop_begin = 0
-		s.loop_end = samples.size()
+	# Music is NOT given an engine loop: the loop wrap-around of AudioStreamWAV happens exactly
+	# N seconds after playback starts, which lined up with the field crashes. game.gd restarts
+	# the player from its `finished` signal instead (see _on_music_finished).
 	return s
 
 static func _buf(seconds: float, rate: int) -> PackedFloat32Array:

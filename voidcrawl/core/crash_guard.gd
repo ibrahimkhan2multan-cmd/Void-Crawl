@@ -51,7 +51,12 @@ static func mark(label: String) -> void:
 
 static func on_start() -> void:
 	crashed_last_time = FileAccess.file_exists(FLAG)
-	level = int(VCSettings.values.get("crash_level", 0))
+	level = 0                                           # never auto-degrade quality; diagnostics only
+	if not bool(VCSettings.values.get("migrated_027", false)):
+		VCSettings.values["safe_mode"] = false          # undo the old automatic safe mode
+		VCSettings.values["crash_level"] = 0
+		VCSettings.values["migrated_027"] = true
+		VCSettings.save_settings()
 	if FileAccess.file_exists(MARK):
 		var mo := FileAccess.get_file_as_string(MARK)
 		var mp := FileAccess.open(MARK_PREV, FileAccess.WRITE)
@@ -65,9 +70,6 @@ static func on_start() -> void:
 			pf.store_string(old)
 			pf.close()
 	if crashed_last_time:
-		VCSettings.values["safe_mode"] = true          # next run uses the plain, safest graphics
-		level = mini(level + 1, 4)                      # and each further crash strips more features
-		VCSettings.values["crash_level"] = level
 		VCSettings.save_settings()
 		var txt := _previous_log_text()
 		var f := FileAccess.open(REPORT, FileAccess.WRITE)

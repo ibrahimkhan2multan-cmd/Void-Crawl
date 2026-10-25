@@ -84,6 +84,7 @@ func _setup_audio() -> void:
 		m.volume_db = -80.0
 		add_child(m)
 		_music_players.append(m)
+		m.finished.connect(_on_music_finished.bind(m))
 	# synthesise audio on a worker thread so the first frames are not delayed
 	_audio_task = WorkerThreadPool.add_task(_synth_all, false, "voidcrawl audio synth")
 
@@ -149,7 +150,14 @@ func _process(_delta: float) -> void:
 			_crossfade_to(s)
 			_current_music = _want_music
 
+func _on_music_finished(p: AudioStreamPlayer) -> void:
+	# manual loop: restart only the player that is meant to be playing
+	if play_audio and p.stream != null and _music_players[_music_active] == p and _current_music != "":
+		VCCrashGuard.mark("audio:music_restart")
+		p.play()
+
 func _crossfade_to(s: AudioStream) -> void:
+	VCCrashGuard.mark("audio:music_start")
 	var old := _music_players[_music_active]
 	_music_active = 1 - _music_active
 	var nw := _music_players[_music_active]

@@ -10,7 +10,9 @@ const DEFAULTS := {
 	"quality": 1,            # 0 low, 1 medium, 2 high
 	"fps": 30,               # 30 or 60
 	"show_fps": false,
-	"safe_mode": false,      # plain materials, no custom shaders / glow / fog / gradients (auto-enabled after a crash)
+	"migrated_027": false,
+	"crash_level": 0,
+	"safe_mode": false,      # plain materials, no custom shaders / glow / fog / gradients (manual only)
 	"joy_size": 1.0, "joy_floating": true, "joy_deadzone": 0.12,
 	"btn_scale": 1.0, "btn_opacity": 0.8, "left_handed": false,
 	"cam_sens": 1.0, "cam_zoom": 1.0,

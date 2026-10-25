@@ -455,6 +455,7 @@ func _spawn_enemy_at_tile(type: String, tile: Vector2i, room: int, level: int, d
 	e.facing = randf() * TAU
 	e.killed.connect(_on_enemy_killed)
 	enemies.append(e)
+	VCCrashGuard.stage("spawn:%s" % type)
 	fx.spawn_pillar(e.global_position, delay + 0.2)
 	return e
 
@@ -589,9 +590,13 @@ func _start_encounter(rid: int) -> void:
 	st["state"] = "active"
 	st["wave"] = 0
 	var enc: Dictionary = data.rooms[rid]["encounter"]
+	VCCrashGuard.stage("encounter:start room=%d" % rid)
 	if bool(enc.get("lock", true)):
+		VCCrashGuard.stage("encounter:barriers")
 		_set_barriers(rid, true)
+	VCCrashGuard.stage("encounter:wave0")
 	_spawn_wave(rid, 0)
+	VCCrashGuard.stage("encounter:started")
 	hud.toast("Defeat the enemies to open the doors", Color(1.0, 0.6, 0.7))
 
 func _spawn_wave(rid: int, w: int) -> void:
@@ -933,6 +938,7 @@ func _on_chest_opened(ch: VCInteractable) -> void:
 	counters["chests"] += 1
 	VC.profile.stats["chests"] = int(VC.profile.stats["chests"]) + 1
 	opened_chests.append(ch.id)
+	VCCrashGuard.stage("chest:open")
 	play_sfx("chest")
 	fx.burst(ch.global_position + Vector3(0, 1.0, 0), Color(1.0, 0.8, 0.4), 22, 5.0, 1.1)
 	var rng := RandomNumberGenerator.new()
@@ -948,12 +954,16 @@ func _on_chest_opened(ch: VCInteractable) -> void:
 			var min_r := VCDefs.Rarity.RARE if (ch.tier >= 2 and k == 0) else VCDefs.Rarity.UNCOMMON
 			var rr := maxi(min_r, VCItems.roll_rarity(rng, 0.5))
 			items.append(VCItems.generate(rng, lvl, rr, -1, 0.0, VC.profile.alloc_uid()))
+	VCCrashGuard.stage("chest:items")
 	for it in items:
 		_drop_item(ch.global_position + Vector3(0, 0.5, 0), it)
+	VCCrashGuard.stage("chest:coins")
 	_drop_coins(ch.global_position, int(rng.randi_range(18, 34) * ch.tier))
 	hud.toast("Chest opened!", VCDefs.COL_COIN)
 	_update_objectives()
+	VCCrashGuard.stage("chest:save")
 	_save_run()
+	VCCrashGuard.stage("chest:done")
 
 func _on_shrine_used(sh: VCInteractable) -> void:
 	var first := checkpoint_room != sh.room

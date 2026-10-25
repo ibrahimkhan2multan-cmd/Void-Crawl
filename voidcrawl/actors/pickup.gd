@@ -42,12 +42,6 @@ func setup_item(it: Dictionary) -> void:
 		_beam.material_override = VCMats.fx(Color(col.r, col.g, col.b, 0.35), true)
 		_beam.position = Vector3(0, 1.9, 0)
 		add_child(_beam)
-		var light := OmniLight3D.new()
-		light.light_color = col
-		light.light_energy = 0.9
-		light.omni_range = 4.0
-		light.position = Vector3(0, 0.8, 0)
-		add_child(light)
 
 func setup_potion() -> void:
 	kind = Kind.POTION

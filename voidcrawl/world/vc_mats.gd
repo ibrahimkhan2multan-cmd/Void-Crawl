@@ -75,9 +75,12 @@ static func fx(color: Color, additive: bool = false) -> StandardMaterial3D:
 	m.albedo_color = color
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	# Plain alpha blending, back-face culling: additive + cull-disabled
+	# transparent geometry is a known Mali driver hazard.
+	m.cull_mode = BaseMaterial3D.CULL_BACK
+	m.no_depth_test = false
 	if additive:
-		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.albedo_color = Color(color.r, color.g, color.b, minf(color.a, 0.6))
 	_mats[key] = m
 	return m
 

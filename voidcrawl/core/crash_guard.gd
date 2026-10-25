@@ -96,6 +96,7 @@ static func report_text() -> String:
 	var t := ""
 	if FileAccess.file_exists(REPORT):
 		t = FileAccess.get_file_as_string(REPORT)
+	t = "safe_mode=%s version=%s\n" % [str(VCSettings.safe_mode()), str(ProjectSettings.get_setting("application/config/version", "?"))] + t
 	var logs := _logs()
 	if logs.size() > 0:
 		t += "\n\n--- current session log tail (%s) ---\n%s" % [logs[0], _tail(logs[0], 80)]

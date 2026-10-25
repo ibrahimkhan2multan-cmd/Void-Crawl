@@ -40,7 +40,11 @@ func build_chest(p_tier: int) -> void:
 	_light.light_energy = 0.7
 	_light.omni_range = 3.5
 	_light.position = Vector3(0, 1.2, 0)
-	add_child(_light)
+	if VCSettings.safe_mode():
+		_light.free()
+		_light = null
+	else:
+		add_child(_light)
 	var sb := StaticBody3D.new()
 	sb.collision_layer = VCDefs.L_PROP
 	sb.collision_mask = 0
@@ -68,7 +72,11 @@ func build_shrine() -> void:
 	_light.light_energy = 0.3
 	_light.omni_range = 6.0
 	_light.position = Vector3(0, 2.0, 0)
-	add_child(_light)
+	if VCSettings.safe_mode():
+		_light.free()
+		_light = null
+	else:
+		add_child(_light)
 	var sb := StaticBody3D.new()
 	sb.collision_layer = VCDefs.L_PROP
 	sb.collision_mask = 0
@@ -106,7 +114,11 @@ func build_gate() -> void:
 	_light.light_energy = 0.2
 	_light.omni_range = 9.0
 	_light.position = Vector3(0, 1.8, 0)
-	add_child(_light)
+	if VCSettings.safe_mode():
+		_light.free()
+		_light = null
+	else:
+		add_child(_light)
 	visible = true
 	_apply_gate_state()
 

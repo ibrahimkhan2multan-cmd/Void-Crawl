@@ -404,7 +404,10 @@ func _make_marker() -> void:
 	l.light_energy = 1.4
 	l.omni_range = 6.0
 	l.position = Vector3(0, 1.5, 0)
-	_marker.add_child(l)
+	if VCSettings.safe_mode():
+		l.free()
+	else:
+		_marker.add_child(l)
 
 # =========================================================================
 # world API used by actors

@@ -139,7 +139,7 @@ func _build_rig() -> void:
 				_mk(_arm_l, Vector3(0.14, 1.0, 0.8), Vector3(-0.1, -0.35, -0.35), Color(0.42, 0.45, 0.55))
 				_mk(_arm_l, Vector3(0.16, 0.7, 0.5), Vector3(-0.12, -0.35, -0.38), glow * 0.9, 1.2)
 				_mk(rig, Vector3(0.7, 0.16, 0.5), Vector3(0, 1.32, 0), Color(0.42, 0.45, 0.55))
-		"slinger", "cultist", "necromancer":
+		"slinger", "cultist", "necromancer", "icearcher":
 			var bone2 := Color(0.82, 0.8, 0.74)
 			_leg_l = _limb(rig, Vector3(-0.12, 0.62, 0)); _leg_r = _limb(rig, Vector3(0.12, 0.62, 0))
 			_mk(_leg_l, Vector3(0.14, 0.62, 0.16), Vector3(0, -0.31, 0), bone2 * 0.8)
@@ -167,7 +167,7 @@ func _build_rig() -> void:
 				var leg := _limb(rig, Vector3(0.3 * side, 0.45, zi))
 				_mk(leg, Vector3(0.55, 0.08, 0.08), Vector3(0.28 * side, -0.1, 0), Color(0.18, 0.12, 0.26))
 				_legs8.append(leg)
-		"wisp":
+		"wisp", "frostwraith":
 			var core := _mk(rig, Vector3(0.6, 0.6, 0.6), Vector3(0, 0.0, 0), glow, 2.4)
 			core.rotation = Vector3(0.7, 0.7, 0.0)
 			_spin_parts.append(core)
@@ -175,8 +175,8 @@ func _build_rig() -> void:
 				var shard := _mk(rig, Vector3(0.18, 0.4, 0.18), Vector3.ZERO, glow * 1.2, 2.0)
 				_spin_parts.append(shard)
 			_mk(rig, Vector3(0.9, 0.05, 0.9), Vector3(0, -1.05, 0), Color(0.3, 0.1, 0.5, 1.0), 0.0).visible = false
-		"brute":
-			var stone := Color(0.4, 0.36, 0.46)
+		"brute", "yeti":
+			var stone: Color = def.get("body", Color(0.4, 0.36, 0.46))
 			_leg_l = _limb(rig, Vector3(-0.22, 0.6, 0)); _leg_r = _limb(rig, Vector3(0.22, 0.6, 0))
 			_mk(_leg_l, Vector3(0.3, 0.62, 0.32), Vector3(0, -0.31, 0), stone * 0.7)
 			_mk(_leg_r, Vector3(0.3, 0.62, 0.32), Vector3(0, -0.31, 0), stone * 0.7)

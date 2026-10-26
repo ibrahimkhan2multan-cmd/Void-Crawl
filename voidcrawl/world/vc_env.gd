@@ -13,11 +13,14 @@ static func make(quality: Dictionary, boss: bool = false, palette: String = "cry
 	if palette == "ember":
 		env.ambient_light_color = Color(0.9, 0.68, 0.58)
 		env.background_color = Color(0.04, 0.012, 0.01)
+	if palette == "frost":
+		env.ambient_light_color = Color(0.62, 0.78, 1.0)
+		env.background_color = Color(0.01, 0.02, 0.05)
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.tonemap_exposure = 1.05
 	if bool(quality.get("fog", true)):
 		env.fog_enabled = true
-		env.fog_light_color = Color(0.16, 0.05, 0.03) if palette == "ember" else Color(0.07, 0.04, 0.13)
+		env.fog_light_color = Color(0.16, 0.05, 0.03) if palette == "ember" else (Color(0.05, 0.1, 0.18) if palette == "frost" else Color(0.07, 0.04, 0.13))
 		env.fog_density = 0.016
 		env.fog_sky_affect = 0.0
 	env.adjustment_enabled = true

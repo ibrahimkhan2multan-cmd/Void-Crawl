@@ -12,6 +12,7 @@ static func run(t: Node) -> void:
 	await _enemies(t)
 	await _bomb(t)
 	await _forge_and_delve(t)
+	await _frost(t)
 	await safe_mode(t)
 
 static func _items(t: Node) -> void:
@@ -253,7 +254,7 @@ static func fuzz(t: Node) -> void:
 	var bad := 0
 	var worst := 0
 	for i in 500:
-		for id in ["crypt", "forge", "delve"]:
+		for id in ["crypt", "forge", "frost", "delve"]:
 			var s := rng.randi_range(1, 2000000000)
 			var t0 := Time.get_ticks_msec()
 			var d := VCDungeonGenerator.generate(s, id)
@@ -342,3 +343,41 @@ static func _boots_and_codes(t: Node) -> void:
 	t.check("inventory shows five equipment slots", true)
 	inv.queue_free()
 	VC.new_game()
+
+
+static func _frost(t: Node) -> void:
+	t.section("content: Frostmaw Caverns")
+	var ok := true
+	for s in 40:
+		var d := VCDungeonGenerator.generate(s * 19 + 5, "frost")
+		var r := VCDungeonValidator.validate(d, 0)
+		if not r["ok"]:
+			ok = false
+			print("  frost seed ", s * 19 + 5, " ", r["errors"])
+	t.check("40 Frostmaw seeds all valid and reachable", ok)
+	t.check("frost is deterministic", VCDungeonGenerator.generate(7, "frost").digest() == VCDungeonGenerator.generate(7, "frost").digest())
+	t.check("frost unlocks after the forge", VCMissions.is_unlocked("frost", ["forge"]) and not VCMissions.is_unlocked("frost", ["crypt"]))
+	var m: VCMission = await GP._launch(t, "frost", 77)
+	t.check("frost builds", m.build_done)
+	var types := ["frostwraith", "icearcher", "yeti"]
+	var spawned: Array = []
+	var c: Vector2i = m.data.rooms[0]["center"]
+	for ty in types:
+		spawned.append(m.spawn_enemy_at(ty, m.data.tile_to_world(c + Vector2i(2, 2)), 0, 9))
+	m.player.god_mode = true
+	await GP._frames(t, 60 * 5)
+	t.check("frost enemies spawn and run AI 5s", spawned.size() == 3 and m.player.is_alive())
+	for e in spawned:
+		if is_instance_valid(e):
+			e.invulnerable = false
+			e.take_hit(99999.0, e.global_position, false, 0.0, m.player)
+	await GP._frames(t, 60)
+	var boss := m.spawn_enemy_at("frostmaw", m.data.tile_to_world(c + Vector2i(3, 3)), 0, 9)
+	await GP._frames(t, 60 * 4)
+	t.check("Frostmaw boss spawns and acts", is_instance_valid(boss) and boss is VCBoss and boss.is_alive())
+	if is_instance_valid(boss):
+		m.enemies.erase(boss)
+		boss.queue_free()
+	await GP._frames(t, 30)
+	m.queue_free()
+	await t.get_tree().process_frame

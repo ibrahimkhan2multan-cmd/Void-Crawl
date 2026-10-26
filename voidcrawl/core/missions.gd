@@ -3,7 +3,7 @@ extends RefCounted
 ## Mission definitions. Adding a mission = adding an entry here (plus, optionally, a new
 ## layout/biome in the dungeon generator). The dungeon generator reads these keys.
 
-const ORDER := ["tutorial", "crypt", "forge", "delve"]
+const ORDER := ["tutorial", "crypt", "forge", "frost", "delve"]
 
 const DATA := {
 	"tutorial": {
@@ -58,6 +58,24 @@ const DATA := {
 		"objectives": [
 			{"id": "find", "text": "Find the Colossus' furnace", "type": "enter_boss"},
 			{"id": "boss", "text": "Defeat the Ashen Colossus", "type": "boss"},
+			{"id": "exit", "text": "Step through the Void Gate", "type": "exit"},
+		],
+	},
+	"frost": {
+		"name": "Frostmaw Caverns",
+		"biome": "Rimefall",
+		"blurb": "Frozen halls where the cold itself hunts you. Rime wraiths, frostbone archers and glacier yetis guard the Frostmaw.",
+		"layout": "procedural", "palette": "frost", "pool": "frost",
+		"cols": 5, "rows": 4, "path_len": 10,
+		"fixed_seed": 0,
+		"recommended_level": 9,
+		"xp": 2400,
+		"coins": 800,
+		"unlock": "forge",
+		"boss": "frostmaw", "boss_title": "THE FROSTMAW", "boss_sub": "Terror of the Rimefall",
+		"objectives": [
+			{"id": "find", "text": "Find the Frostmaw's den", "type": "enter_boss"},
+			{"id": "boss", "text": "Defeat the Frostmaw", "type": "boss"},
 			{"id": "exit", "text": "Step through the Void Gate", "type": "exit"},
 		],
 	},

@@ -365,12 +365,19 @@ func _open_dungeons() -> void:
 	v.custom_minimum_size = Vector2(700, 0)
 	panel.add_child(v)
 	v.add_child(VCUI.label("DUNGEONS", 36, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(700, 460)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	v.add_child(sc)
+	var list := VCUI.vbox(10)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(list)
 	for id in VCMissions.ORDER:
 		var mi := VCMissions.get_mission(id)
 		var unlocked := VCMissions.is_unlocked(id, VC.profile.completed)
 		var done: bool = VC.profile.completed.has(id)
 		var card := VCUI.panel(Color(0.08, 0.05, 0.14, 0.95), Color(0.3, 0.18, 0.5) if unlocked else Color(0.2, 0.2, 0.25))
-		v.add_child(card)
+		list.add_child(card)
 		var h := VCUI.hbox(12)
 		card.add_child(h)
 		var txt := VCUI.vbox(2)

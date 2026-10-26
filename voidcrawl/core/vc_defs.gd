@@ -65,6 +65,10 @@ const ENEMY_MITE := "embermite"
 const ENEMY_CULTIST := "cultist"
 const ENEMY_WEAVER := "necromancer"
 const ENEMY_COLOSSUS := "colossus"
+const ENEMY_FROSTWRAITH := "frostwraith"
+const ENEMY_ICEARCHER := "icearcher"
+const ENEMY_YETI := "yeti"
+const ENEMY_FROSTMAW := "frostmaw"
 
 # --- Attributes -------------------------------------------------------------
 const ATTR_IDS := ["str", "vit", "agi", "arc"]

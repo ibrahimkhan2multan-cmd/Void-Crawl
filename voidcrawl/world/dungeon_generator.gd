@@ -51,6 +51,10 @@ static func generate(seed_: int, mission_id: String) -> VCDungeonData:
 # ------------------------------------------------------------------ graph --
 
 static func _theme_for_path(i: int, n: int, palette: String = "crypt") -> String:
+	if palette == "frost":
+		if i == n - 1:
+			return "rime"
+		return "ice" if i < 3 else ("glacier" if i < 6 else "rime")
 	if palette == "ember":
 		if i == n - 1:
 			return "magma"
@@ -392,6 +396,17 @@ static func _place_wall_lights(d: VCDungeonData, rng: RandomNumberGenerator, r: 
 			d.torches.append({"tile": cand[0], "facing": cand[1]})
 
 static func _enemy_pool(depth: int, kind: String = "crypt") -> Array:
+	if kind == "frost":
+		var fp: Array = [[VCDefs.ENEMY_HUSK, 2.0], [VCDefs.ENEMY_ICEARCHER, 3.0], [VCDefs.ENEMY_SPIDER, 1.5]]
+		if depth >= 1:
+			fp.append([VCDefs.ENEMY_SHIELD, 2.5])
+			fp.append([VCDefs.ENEMY_FROSTWRAITH, 2.5])
+		if depth >= 2:
+			fp.append([VCDefs.ENEMY_CULTIST, 1.0])
+		if depth >= 3:
+			fp.append([VCDefs.ENEMY_YETI, 2.0])
+			fp.append([VCDefs.ENEMY_WEAVER, 1.5])
+		return fp
 	if kind == "ember":
 		var ep: Array = [[VCDefs.ENEMY_HUSK, 3.0], [VCDefs.ENEMY_MITE, 3.0]]
 		if depth >= 1:
@@ -408,8 +423,11 @@ static func _enemy_pool(depth: int, kind: String = "crypt") -> Array:
 			[VCDefs.ENEMY_SHIELD, 2.0], [VCDefs.ENEMY_CULTIST, 2.0]]
 		if depth >= 2:
 			mp.append([VCDefs.ENEMY_WISP, 1.5])
+			mp.append([VCDefs.ENEMY_ICEARCHER, 1.5])
+			mp.append([VCDefs.ENEMY_FROSTWRAITH, 1.2])
 		if depth >= 3:
 			mp.append([VCDefs.ENEMY_BRUTE, 1.5])
+			mp.append([VCDefs.ENEMY_YETI, 1.0])
 			mp.append([VCDefs.ENEMY_WEAVER, 1.5])
 		return mp
 	var pool: Array = [[VCDefs.ENEMY_HUSK, 6.0]]

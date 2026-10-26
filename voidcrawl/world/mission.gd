@@ -446,7 +446,7 @@ func spawn_enemy_at(type: String, pos: Vector3, room: int, level: int) -> VCEnem
 
 func _spawn_enemy_at_tile(type: String, tile: Vector2i, room: int, level: int, delay: float) -> VCEnemy:
 	var e: VCEnemy
-	if type == "warden" or type == "colossus":
+	if String(VCEnemyDefs.get_def(type)["ai"]) == "boss":
 		e = VCBoss.new()
 	else:
 		e = VCEnemy.new()
@@ -868,8 +868,10 @@ func _start_boss(rid: int) -> void:
 	boss = _spawn_enemy_at_tile(_boss_type(), c + Vector2i(0, -5), rid, _enemy_level(rid) + 1, 1.8) as VCBoss
 	boss.phase_changed.connect(_on_boss_phase)
 	hud.show_boss(boss)
-	var is_col := _boss_type() == "colossus"
-	hud.banner("THE ASHEN COLOSSUS" if is_col else String(mission.get("boss_title", "THE HOLLOW WARDEN")), String(mission.get("boss_sub", "Guardian of the Void Gate")), Color(1.0, 0.65, 0.4) if is_col else Color(1.0, 0.7, 1.0), 3.4)
+	var bt := _boss_type()
+	var special := bt != "warden"
+	var bdef: Dictionary = VCEnemyDefs.get_def(bt)
+	hud.banner(String(bdef["name"]).to_upper() if special else String(mission.get("boss_title", "THE HOLLOW WARDEN")), String(mission.get("boss_sub", "Guardian of the Void Gate")), (bdef.get("glow", Color(1.0, 0.7, 1.0)) as Color).lerp(Color.WHITE, 0.25) if special else Color(1.0, 0.7, 1.0), 3.4)
 	play_sfx("boss_roar")
 	camera_shake(0.7)
 	VC.play_music("boss")

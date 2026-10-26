@@ -55,6 +55,30 @@ const DEFS := {
 		"summon": "spiderling", "summon_count": 2, "summon_cap": 5, "scale": 1.12,
 		"glow": Color(0.4, 1.0, 0.6), "robe": Color(0.1, 0.22, 0.16),
 	},
+	"frostwraith": {
+		"name": "Rime Wraith", "ai": "dasher", "hp": 40.0, "dmg": 14.0, "speed": 3.7, "radius": 0.42,
+		"xp": 22, "coins": [3, 7], "item_chance": 0.18, "potion_chance": 0.1,
+		"windup": 0.6, "reach": 11.0, "cooldown": 2.2, "dash_speed": 14.0, "dash_time": 0.5, "scale": 1.05, "floating": true,
+		"glow": Color(0.55, 0.9, 1.0),
+	},
+	"icearcher": {
+		"name": "Frostbone Archer", "ai": "ranged", "hp": 52.0, "dmg": 10.0, "speed": 3.0, "radius": 0.42,
+		"xp": 24, "coins": [3, 8], "item_chance": 0.2, "potion_chance": 0.1,
+		"windup": 0.7, "reach": 14.0, "pref_dist": 9.0, "cooldown": 2.4, "proj_speed": 11.0, "fan": 3, "scale": 1.05,
+		"glow": Color(0.6, 0.9, 1.0), "robe": Color(0.18, 0.3, 0.45),
+	},
+	"yeti": {
+		"name": "Glacier Yeti", "ai": "slam", "hp": 230.0, "dmg": 28.0, "speed": 2.6, "radius": 0.9,
+		"xp": 55, "coins": [8, 18], "item_chance": 0.6, "potion_chance": 0.3,
+		"windup": 0.9, "reach": 3.5, "cooldown": 2.2, "slam_radius": 3.8, "scale": 1.65,
+		"glow": Color(0.55, 0.85, 1.0), "body": Color(0.78, 0.84, 0.92),
+	},
+	"frostmaw": {
+		"name": "The Frostmaw", "ai": "boss", "hp": 1700.0, "dmg": 31.0, "speed": 2.8, "radius": 1.3,
+		"xp": 1300, "coins": [300, 400], "item_chance": 1.0, "potion_chance": 1.0,
+		"windup": 0.78, "reach": 5.2, "cooldown": 1.3, "scale": 2.6,
+		"glow": Color(0.5, 0.9, 1.0), "body": Color(0.35, 0.5, 0.68),
+	},
 	"colossus": {
 		"name": "The Ashen Colossus", "ai": "boss", "hp": 1250.0, "dmg": 27.0, "speed": 2.7, "radius": 1.25,
 		"xp": 900, "coins": [220, 300], "item_chance": 1.0, "potion_chance": 1.0,

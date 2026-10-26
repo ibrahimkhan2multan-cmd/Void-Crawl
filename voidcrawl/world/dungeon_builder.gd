@@ -15,6 +15,9 @@ const THEME_COL := {
 	"ash": [Color(0.30, 0.22, 0.22), Color(0.46, 0.34, 0.32)],
 	"forge": [Color(0.27, 0.19, 0.17), Color(0.5, 0.3, 0.22)],
 	"magma": [Color(0.24, 0.1, 0.09), Color(0.5, 0.2, 0.14)],
+	"ice": [Color(0.24, 0.32, 0.42), Color(0.44, 0.6, 0.74)],
+	"glacier": [Color(0.18, 0.29, 0.43), Color(0.33, 0.52, 0.76)],
+	"rime": [Color(0.13, 0.18, 0.32), Color(0.3, 0.42, 0.72)],
 }
 
 var data: VCDungeonData
@@ -265,11 +268,12 @@ func _build_lights() -> void:
 		var wt2: Vector2i = wc["tile"]
 		var f2: Vector2i = wc["facing"]
 		var p2 := data.tile_to_world(wt2) + Vector3(float(f2.x), 0, float(f2.y)) * (T * 0.5 - 0.1)
-		var ember: bool = String(VCMissions.get_mission(data.mission_id).get("palette", "")) == "ember"
-		var c := Color(1.0, 0.42, 0.1) if ember else Color(0.55, 0.25, 1.0)
+		var pal := String(VCMissions.get_mission(data.mission_id).get("palette", ""))
+		var ember: bool = pal == "ember"
+		var c := Color(1.0, 0.42, 0.1) if ember else (Color(0.4, 0.8, 1.0) if pal == "frost" else Color(0.55, 0.25, 1.0))
 		_add(_glow_chunks, p2 + Vector3(0, 1.2, 0), Vector3(0.4, 1.0, 0.4), c, Vector3(0.0, 0.4, 0.3))
 		_add(_glow_chunks, p2 + Vector3(0.3, 0.8, 0.0), Vector3(0.28, 0.6, 0.28), c * 0.9, Vector3(0.0, 0.1, -0.35))
-		_add_light(p2 + Vector3(float(f2.x), 1.4, float(f2.y)) * 0.6, Color(1.0, 0.45, 0.15) if ember else Color(0.6, 0.32, 1.0), 1.4, 7.0, 0.1)
+		_add_light(p2 + Vector3(float(f2.x), 1.4, float(f2.y)) * 0.6, Color(1.0, 0.45, 0.15) if ember else (Color(0.45, 0.8, 1.0) if pal == "frost" else Color(0.6, 0.32, 1.0)), 1.4, 7.0, 0.1)
 	for br in data.braziers:
 		var bp := data.tile_to_world(br["tile"])
 		_add(_wall_chunks, bp + Vector3(0, 0.35, 0), Vector3(0.5, 0.7, 0.5), Color(0.22, 0.2, 0.25))

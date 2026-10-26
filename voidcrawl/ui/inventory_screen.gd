@@ -91,15 +91,15 @@ func _build_pack() -> void:
 	_body.add_child(row)
 
 	# equipped column
-	var eqv := VCUI.vbox(8)
+	var eqv := VCUI.vbox(5)
 	eqv.custom_minimum_size = Vector2(250, 0)
 	row.add_child(eqv)
 	eqv.add_child(VCUI.label("EQUIPPED", 20, VCDefs.COL_VIOLET))
-	for slot in 4:
-		var h := VCUI.hbox(10)
+	for slot in VCDefs.SLOT_COUNT:
+		var h := VCUI.hbox(8)
 		eqv.add_child(h)
 		var ic := VCItemIcon.new()
-		ic.custom_minimum_size = Vector2(84, 84)
+		ic.custom_minimum_size = Vector2(72, 72)
 		ic.slot_hint = slot
 		var it: Dictionary = p.equipment.get(slot, {})
 		ic.set_item(it)

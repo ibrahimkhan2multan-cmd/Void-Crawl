@@ -11,6 +11,7 @@ const DEFAULTS := {
 	"fps": 30,               # 30 or 60
 	"show_fps": false,
 	"migrated_027": false,
+	"seen_howto": false,
 	"crash_level": 0,
 	"safe_mode": false,      # plain materials, no custom shaders / glow / fog / gradients (manual only)
 	"joy_size": 1.0, "joy_floating": true, "joy_deadzone": 0.12,

@@ -5,6 +5,7 @@ const GP := preload("res://voidcrawl/tests/test_gameplay.gd")
 
 static func run(t: Node) -> void:
 	_items(t)
+	await _boots_and_codes(t)
 	_generation(t)
 	fuzz(t)
 	await _healing_and_movement(t)
@@ -274,3 +275,70 @@ static func safe_mode(t: Node) -> void:
 	await t.get_tree().process_frame
 	VCSettings.values["safe_mode"] = false
 	VCSettings.save_settings()
+
+
+static func _boots_and_codes(t: Node) -> void:
+	t.section("content: boots, codes, how-to")
+	VC.new_game()
+	var p: VCProfile = VC.profile
+	var before := float(p.derived()["move_speed"])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	var boots := VCItems.generate(rng, 5, VCDefs.Rarity.RARE, VCDefs.Slot.BOOTS, 0.0, p.alloc_uid(), "windrunners")
+	t.check("boots roll into the boots slot", int(boots["slot"]) == VCDefs.Slot.BOOTS and int(boots["speed"]) > 0)
+	p.add_item(boots)
+	p.equip_from_inventory(p.inventory.size() - 1)
+	t.check("equipping boots raises move speed", float(p.derived()["move_speed"]) > before * 1.08, "%.2f -> %.2f" % [before, float(p.derived()["move_speed"])])
+	var rt := VCProfile.from_dict(JSON.parse_string(JSON.stringify(p.to_dict())))
+	t.check("boots survive save/load", rt.equipment.has(VCDefs.Slot.BOOTS))
+	var seen_boots := false
+	for i in 300:
+		if int(VCItems.generate(rng, 3, -1, -1, 0.0, i)["slot"]) == VCDefs.Slot.BOOTS:
+			seen_boots = true
+	t.check("random loot includes boots", seen_boots)
+	# codes
+	var r0 := VCCodes.redeem("nope123", p)
+	t.check("invalid code rejected", not bool(r0["ok"]))
+	var dps0 := VCProfile.dps_of(p.derived())
+	var r1 := VCCodes.redeem(" infinity-x_maaz ", p)
+	t.check("easter-egg code accepted (case/space/dash insensitive)", bool(r1["ok"]), String(r1["msg"]))
+	var found := false
+	for it in p.inventory:
+		if String(it["base"]) == "infinity_edge":
+			found = true
+			p.equip_from_inventory(p.inventory.find(it))
+			break
+	t.check("Infinity Edge of Maaz added", found)
+	var d1 := p.derived()
+	t.check("sword is strong but not overpowered (dps %.0f vs start %.0f)" % [VCProfile.dps_of(d1), dps0], VCProfile.dps_of(d1) > dps0 * 1.3 and VCProfile.dps_of(d1) < 80.0)
+	t.check("code only works once", not bool(VCCodes.redeem("INFINITYXMAAZ", p)["ok"]))
+	var rt2 := VCProfile.from_dict(JSON.parse_string(JSON.stringify(p.to_dict())))
+	t.check("redeemed list persists and lore kept", rt2.redeemed.has("INFINITYXMAAZ") and String(rt2.equipment[VCDefs.Slot.WEAPON].get("lore", "")) != "")
+	var coins0 := p.coins
+	t.check("coin code works", bool(VCCodes.redeem("voidcrawl", p)["ok"]) and p.coins == coins0 + 300)
+	for k in VCCodes.DEFS:
+		var pp := VCProfile.new_game()
+		t.check("code %s redeems on a fresh save" % k, bool(VCCodes.redeem(k, pp)["ok"]))
+	# UI
+	var ht := VCHowToPlay.new()
+	t.add_child(ht)
+	await t.get_tree().process_frame
+	for i in VCHowToPlay.PAGES.size():
+		ht._go(1) if i < VCHowToPlay.PAGES.size() - 1 else null
+		await t.get_tree().process_frame
+	t.check("how-to walks through every page", ht._page == VCHowToPlay.PAGES.size() - 1)
+	ht.queue_free()
+	var cp := VCCodesPanel.new()
+	t.add_child(cp)
+	await t.get_tree().process_frame
+	cp._edit.text = "VOIDCRAWL"
+	cp._redeem()
+	t.check("codes panel redeems", cp._result.text != "")
+	cp.queue_free()
+	var inv := VCInventoryScreen.new()
+	t.add_child(inv)
+	await t.get_tree().process_frame
+	inv.refresh()
+	t.check("inventory shows five equipment slots", true)
+	inv.queue_free()
+	VC.new_game()

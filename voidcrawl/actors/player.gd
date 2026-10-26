@@ -72,6 +72,8 @@ var _leg_r: Node3D
 var _weapon_root: Node3D
 var _cape: MeshInstance3D
 var _helm_part: MeshInstance3D
+var _boot_l: MeshInstance3D
+var _boot_r: MeshInstance3D
 var _parts: Array = []
 var _light: OmniLight3D
 
@@ -142,8 +144,8 @@ func _build_rig() -> void:
 	_leg_r = Node3D.new(); _leg_r.position = Vector3(0.16, 0.62, 0); rig.add_child(_leg_r)
 	_mk(_leg_l, Vector3(0.24, 0.62, 0.26), Vector3(0, -0.31, 0), Color(0.27, 0.2, 0.42))
 	_mk(_leg_r, Vector3(0.24, 0.62, 0.26), Vector3(0, -0.31, 0), Color(0.27, 0.2, 0.42))
-	_mk(_leg_l, Vector3(0.26, 0.14, 0.34), Vector3(0, -0.6, -0.04), Color(0.2, 0.16, 0.24))
-	_mk(_leg_r, Vector3(0.26, 0.14, 0.34), Vector3(0, -0.6, -0.04), Color(0.2, 0.16, 0.24))
+	_boot_l = _mk(_leg_l, Vector3(0.28, 0.2, 0.36), Vector3(0, -0.56, -0.04), Color(0.2, 0.16, 0.24))
+	_boot_r = _mk(_leg_r, Vector3(0.28, 0.2, 0.36), Vector3(0, -0.56, -0.04), Color(0.2, 0.16, 0.24))
 	_torso = _mk(rig, Vector3(0.62, 0.7, 0.36), Vector3(0, 0.98, 0), cloth)
 	_mk(rig, Vector3(0.66, 0.1, 0.4), Vector3(0, 0.66, 0), Color(0.55, 0.3, 0.9), 0.6)       # belt
 	_cape = _mk(rig, Vector3(0.58, 0.9, 0.08), Vector3(0, 0.95, 0.24), Color(0.12, 0.62, 0.7))
@@ -225,6 +227,14 @@ func refresh_visuals() -> void:
 	_helm_part.visible = not helm.is_empty()
 	if not helm.is_empty():
 		_helm_part.material_override = VCMats.solid(VCItems.base_color(helm), 0.3 if int(helm["rarity"]) >= 3 else 0.0)
+	var boots: Dictionary = profile.equipment.get(VCDefs.Slot.BOOTS, {})
+	var bc := Color(0.2, 0.16, 0.24)
+	var be := 0.0
+	if not boots.is_empty():
+		bc = VCItems.base_color(boots)
+		be = 0.5 if int(boots["rarity"]) >= 3 else 0.0
+	_boot_l.material_override = VCMats.solid(bc, be)
+	_boot_r.material_override = VCMats.solid(bc, be)
 	if _light != null:
 		_light.light_color = Color(0.75, 0.55, 1.0).lerp(glow, 0.25)
 

@@ -33,8 +33,9 @@ const RARITY_STAT_MULT := [1.0, 1.15, 1.35, 1.65, 2.05]
 const RARITY_AFFIX_COUNT := [0, 1, 2, 3, 4]
 const RARITY_SELL := [4, 10, 28, 80, 240]
 
-enum Slot { WEAPON, HELM, ARMOR, TRINKET }
-const SLOT_NAMES := ["Weapon", "Helm", "Armor", "Trinket"]
+enum Slot { WEAPON, HELM, ARMOR, TRINKET, BOOTS }
+const SLOT_NAMES := ["Weapon", "Helm", "Armor", "Trinket", "Boots"]
+const SLOT_COUNT := 5
 
 # --- UI palette (black + purple) --------------------------------------------
 const COL_BG := Color("07040d")

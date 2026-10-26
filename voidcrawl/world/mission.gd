@@ -1236,12 +1236,17 @@ func open_overlay(kind: String) -> void:
 			pm.resume.connect(close_overlay)
 			pm.open_pack.connect(func(): _swap_overlay("pack"))
 			pm.open_settings.connect(func(): _swap_overlay("settings"))
+			pm.open_howto.connect(func(): _swap_overlay("howto"))
 			pm.quit_to_menu.connect(_quit_to_menu)
 		"pack":
 			var inv := VCInventoryScreen.new()
 			layer.add_child(inv)
 			inv.closed.connect(close_overlay)
 			inv.changed.connect(_on_inventory_changed)
+		"howto":
+			var ht := VCHowToPlay.new()
+			layer.add_child(ht)
+			ht.closed.connect(close_overlay)
 		"settings":
 			var sp := VCSettingsPanel.new()
 			layer.add_child(sp)
@@ -1249,6 +1254,9 @@ func open_overlay(kind: String) -> void:
 			sp.applied.connect(func():
 				touch.apply_settings()
 				fx.configure(VCSettings.quality_profile()))
+	for oc in layer.get_children():
+		if oc is Control:
+			VCUI.fit_to_viewport(oc)
 	play_sfx("click", -4.0)
 
 func _swap_overlay(kind: String) -> void:

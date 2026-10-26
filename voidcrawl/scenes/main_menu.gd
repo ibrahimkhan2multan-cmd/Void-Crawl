@@ -21,9 +21,13 @@ func _ready() -> void:
 	_build_ui()
 	VC.play_music("menu")
 	_splash()
+	if not bool(VCSettings.get_value("seen_howto")):
+		get_tree().create_timer(1.8).timeout.connect(func():
+			if _modal == null and is_inside_tree():
+				_open_howto())
 	if VCCrashGuard.crashed_last_time:
 		VCCrashGuard.crashed_last_time = false
-		_notice("The game closed unexpectedly last time. Safe graphics mode was turned on automatically. Tap OPEN CRASH REPORT, screenshot it and send it to the developer.")
+		_notice("The game closed unexpectedly last time. Tap OPEN CRASH REPORT, screenshot it and send it to the developer.")
 
 func _m(c: Color, em: float = 0.0) -> StandardMaterial3D:
 	var key := "%s_%s" % [c.to_html(), em]
@@ -187,12 +191,12 @@ func _build_ui() -> void:
 	mc.add_theme_constant_override("margin_top", int(m["top"]))
 	mc.add_theme_constant_override("margin_bottom", int(m["bottom"]))
 	_root.add_child(mc)
-	var col := VCUI.vbox(10)
+	var col := VCUI.vbox(7)
 	col.custom_minimum_size = Vector2(420, 0)
 	col.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	mc.add_child(col)
 	var logo := VCLogo.new()
-	logo.custom_minimum_size = Vector2(520, 150)
+	logo.custom_minimum_size = Vector2(520, 130)
 	col.add_child(logo)
 	var info := VCUI.label("", 20, VCDefs.COL_TEXT_DIM)
 	info.name = "Info"
@@ -201,11 +205,19 @@ func _build_ui() -> void:
 	if not OS.has_feature("web"):
 		items.append(["EXIT", "exit"])
 	for it in items:
-		var b := VCUI.button(String(it[0]), Vector2(380, 64), 28)
+		var b := VCUI.button(String(it[0]), Vector2(380, 56), 26)
 		b.pressed.connect(_on_button.bind(String(it[1])))
 		col.add_child(b)
 		if String(it[1]) == "play":
 			_play_btn = b
+	var row2 := VCUI.hbox(10)
+	col.add_child(row2)
+	var hb := VCUI.button("HOW TO PLAY", Vector2(185, 52), 21)
+	hb.pressed.connect(_on_button.bind("howto"))
+	row2.add_child(hb)
+	var cb2 := VCUI.button("CODES", Vector2(185, 52), 21)
+	cb2.pressed.connect(_on_button.bind("codes"))
+	row2.add_child(cb2)
 	var ver := VCUI.label("VOIDCRAWL v%s  -  Infinity Studios" % String(ProjectSettings.get_setting("application/config/version", "0.1.0")), 16, Color(0.5, 0.45, 0.65))
 	ver.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	_root.add_child(ver)
@@ -291,6 +303,12 @@ func _on_button(id: String) -> void:
 			var sp := VCSettingsPanel.new()
 			sp.closed.connect(_close_modal)
 			_show_modal(sp)
+		"howto":
+			_open_howto()
+		"codes":
+			var cp := VCCodesPanel.new()
+			cp.closed.connect(_close_modal)
+			_show_modal(cp)
 		"exit":
 			VC.save_now()
 			get_tree().quit()
@@ -308,6 +326,7 @@ func _show_modal(c: Control) -> void:
 	layer.name = "ModalLayer"
 	add_child(layer)
 	layer.add_child(c)
+	VCUI.fit_to_viewport(c)
 
 func _close_modal() -> void:
 	if _modal != null:
@@ -317,6 +336,11 @@ func _close_modal() -> void:
 	VCSettings.save_settings()
 	VC.save_now()
 	_refresh_info()
+
+func _open_howto() -> void:
+	var h := VCHowToPlay.new()
+	h.closed.connect(_close_modal)
+	_show_modal(h)
 
 func _open_inventory(tab: String) -> void:
 	var inv := VCInventoryScreen.new()

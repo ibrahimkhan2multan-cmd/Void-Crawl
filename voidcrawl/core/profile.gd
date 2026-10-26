@@ -19,6 +19,7 @@ var equipment: Dictionary = {}       # slot(int) -> item Dictionary
 var completed: Array = []            # mission ids
 var stats: Dictionary = {"kills": 0, "deaths": 0, "chests": 0, "bosses": 0, "playtime": 0.0, "items_found": 0}
 var next_uid: int = 1
+var redeemed: Array = []             # promo codes already used (normalised)
 
 static func new_game() -> VCProfile:
 	var p := VCProfile.new()
@@ -118,7 +119,7 @@ func derived() -> Dictionary:
 	d["arc"] = float(t["arc"])
 	d["ranged"] = bool(t["ranged"])
 	d["weapon_kind"] = String(t["kind"])
-	d["move_speed"] = 6.2 * (1.0 + agi * 0.008 + float(t["speed"]) / 100.0)
+	d["move_speed"] = 6.2 * (1.0 + agi * 0.008 + clampf(float(t["speed"]), -20.0, 55.0) / 100.0)
 	d["crit"] = clampf(0.05 + agi * 0.004 + float(t["crit"]) / 100.0, 0.0, 0.75)
 	d["ability_mult"] = 1.0 + arc * 0.06
 	d["cd_mult"] = clampf(1.0 - arc * 0.01 - float(t["cdr"]) / 100.0, 0.4, 1.0)
@@ -155,7 +156,7 @@ func to_dict() -> Dictionary:
 		"level": level, "xp": xp, "attr_points": attr_points, "attrs": attrs.duplicate(),
 		"coins": coins, "potions": potions, "bombs": bombs, "inventory": inventory.duplicate(true),
 		"equipment": eq, "completed": completed.duplicate(), "stats": stats.duplicate(),
-		"next_uid": next_uid,
+		"next_uid": next_uid, "redeemed": redeemed.duplicate(),
 	}
 
 static func from_dict(d: Dictionary) -> VCProfile:
@@ -186,6 +187,8 @@ static func from_dict(d: Dictionary) -> VCProfile:
 	for k in p.stats:
 		if st.has(k):
 			p.stats[k] = st[k] if k == "playtime" else int(st[k])
+	for rc in d.get("redeemed", []):
+		p.redeemed.append(String(rc))
 	p.next_uid = maxi(int(d.get("next_uid", 1)), 1)
 	# make sure uids never collide with saved items
 	for it in p.inventory:

@@ -21,6 +21,14 @@ const BASES := {
 		"range": 17.0, "arc": 0.0, "ranged": true, "color": Color(0.6, 0.45, 0.35)},
 	"starless_staff": {"name": "Starless Staff", "slot": 0, "kind": "staff", "dmg": [8, 11], "interval": 0.4,
 		"range": 13.0, "arc": 0.0, "ranged": true, "color": Color(0.45, 0.6, 1.0)},
+	"moonlit_saber": {"name": "Moonlit Saber", "slot": 0, "kind": "sword", "dmg": [10, 14], "interval": 0.40,
+		"range": 2.8, "arc": 120.0, "ranged": false, "color": Color(0.7, 0.85, 1.0)},
+	"bone_cleaver": {"name": "Bone Cleaver", "slot": 0, "kind": "axe", "dmg": [14, 19], "interval": 0.62,
+		"range": 2.9, "arc": 140.0, "ranged": false, "color": Color(0.88, 0.85, 0.75)},
+	"cinder_longbow": {"name": "Cinder Longbow", "slot": 0, "kind": "bow", "dmg": [11, 15], "interval": 0.52,
+		"range": 16.0, "arc": 0.0, "ranged": true, "color": Color(1.0, 0.55, 0.25)},
+	"infinity_edge": {"name": "Infinity Edge", "slot": 0, "kind": "sword", "dmg": [15, 20], "interval": 0.38,
+		"range": 2.9, "arc": 125.0, "ranged": false, "color": Color(0.45, 0.95, 1.0), "unique": true},
 	"hollow_cap": {"name": "Hollow Cap", "slot": 1, "kind": "helm", "def": 4, "hp": 10, "color": Color(0.6, 0.58, 0.68)},
 	"crypt_hood": {"name": "Crypt Hood", "slot": 1, "kind": "helm", "def": 2, "hp": 6, "speed": 3, "color": Color(0.35, 0.25, 0.5)},
 	"bone_helm": {"name": "Bone Helm", "slot": 1, "kind": "helm", "def": 6, "hp": 14, "color": Color(0.85, 0.82, 0.74)},
@@ -31,6 +39,18 @@ const BASES := {
 	"gravemail": {"name": "Gravemail", "slot": 2, "kind": "armor", "def": 13, "hp": 30, "speed": -3, "color": Color(0.45, 0.45, 0.55)},
 	"titan_plate": {"name": "Titan Plate", "slot": 2, "kind": "armor", "def": 18, "hp": 40, "speed": -5, "color": Color(0.62, 0.6, 0.7)},
 	"ember_mail": {"name": "Ember Mail", "slot": 2, "kind": "armor", "def": 10, "hp": 26, "atk_pct": 4, "color": Color(0.85, 0.4, 0.22)},
+	"spiked_helm": {"name": "Spiked Helm", "slot": 1, "kind": "helm", "def": 7, "hp": 12, "atk_pct": 3, "color": Color(0.5, 0.5, 0.58)},
+	"cultist_cowl": {"name": "Cultist Cowl", "slot": 1, "kind": "helm", "def": 2, "hp": 8, "cdr": 5, "color": Color(0.5, 0.15, 0.2)},
+	"duskplate": {"name": "Duskplate", "slot": 2, "kind": "armor", "def": 11, "hp": 24, "regen": 25, "color": Color(0.3, 0.3, 0.45)},
+	"nightweave": {"name": "Nightweave Cloak", "slot": 2, "kind": "armor", "def": 5, "hp": 16, "speed": 4, "crit": 2, "color": Color(0.15, 0.12, 0.3)},
+	"scuffed_boots": {"name": "Scuffed Boots", "slot": 4, "kind": "boots", "speed": 4, "def": 1, "color": Color(0.42, 0.3, 0.2)},
+	"crypt_treads": {"name": "Crypt Treads", "slot": 4, "kind": "boots", "speed": 6, "def": 2, "hp": 4, "color": Color(0.35, 0.3, 0.45)},
+	"ironshod_greaves": {"name": "Ironshod Greaves", "slot": 4, "kind": "boots", "def": 6, "hp": 12, "speed": -1, "color": Color(0.55, 0.57, 0.62)},
+	"shadowstep": {"name": "Shadowstep Boots", "slot": 4, "kind": "boots", "speed": 9, "cdr": 3, "color": Color(0.22, 0.14, 0.38)},
+	"windrunners": {"name": "Windrunner Boots", "slot": 4, "kind": "boots", "speed": 12, "color": Color(0.6, 0.9, 0.95)},
+	"ember_striders": {"name": "Ember Striders", "slot": 4, "kind": "boots", "speed": 8, "atk_pct": 3, "color": Color(1.0, 0.5, 0.2)},
+	"voidwalkers": {"name": "Voidwalkers", "slot": 4, "kind": "boots", "speed": 10, "cdr": 5, "color": Color(0.7, 0.35, 1.0)},
+	"gravewalkers": {"name": "Gravewalkers", "slot": 4, "kind": "boots", "speed": 5, "def": 4, "hp": 10, "regen": 25, "color": Color(0.6, 0.62, 0.5)},
 	"heartstone": {"name": "Heartstone", "slot": 3, "kind": "trinket", "regen": 60, "hp": 20, "color": Color(1.0, 0.3, 0.45)},
 	"lucky_coin": {"name": "Lucky Coin", "slot": 3, "kind": "trinket", "coin": 25, "color": Color(1.0, 0.85, 0.3)},
 	"ember_charm": {"name": "Ember Charm", "slot": 3, "kind": "trinket", "atk_pct": 6, "color": Color(1.0, 0.5, 0.25)},
@@ -61,7 +81,7 @@ const UNCOMMON_PREFIX := ["Sturdy", "Keen", "Tempered", "Polished"]
 static func base_ids_for_slot(slot: int) -> Array:
 	var out: Array = []
 	for id in BASES:
-		if int(BASES[id]["slot"]) == slot:
+		if int(BASES[id]["slot"]) == slot and not bool(BASES[id].get("unique", false)):
 			out.append(id)
 	out.sort()
 	return out
@@ -95,7 +115,7 @@ static func generate(rng: RandomNumberGenerator, ilvl: int, rarity: int = -1, sl
 	if slot < 0:
 		# weapons slightly more common so upgrades are visible
 		var sr := rng.randf()
-		slot = 0 if sr < 0.32 else (1 if sr < 0.55 else (2 if sr < 0.8 else 3))
+		slot = 0 if sr < 0.27 else (1 if sr < 0.45 else (2 if sr < 0.66 else (3 if sr < 0.83 else 4)))
 	var ids := base_ids_for_slot(slot)
 	var base_id: String = ids[rng.randi_range(0, ids.size() - 1)]
 	if force_base != "" and BASES.has(force_base):
@@ -161,6 +181,8 @@ static func sanitize(raw: Dictionary) -> Dictionary:
 	item["rarity"] = clampi(int(raw.get("rarity", 0)), 0, 4)
 	item["ilvl"] = maxi(int(raw.get("ilvl", 1)), 1)
 	item["name"] = String(raw.get("name", BASES[item["base"]]["name"]))
+	if raw.has("lore"):
+		item["lore"] = String(raw["lore"])
 	for k in ["dmg_min", "dmg_max", "def", "hp", "speed", "crit", "atk_pct", "cdr", "leech", "coin", "regen"]:
 		if raw.has(k):
 			item[k] = int(raw[k])
@@ -236,6 +258,8 @@ static func describe(item: Dictionary) -> Array:
 		lines.append("+%d%% Health Regen" % item["regen"])
 	for a in item.get("affixes", []):
 		lines.append(affix_text(a))
+	if item.has("lore"):
+		lines.append(String(item["lore"]))
 	return lines
 
 ## Single comparable number per slot, used for "upgrade / downgrade" hints.

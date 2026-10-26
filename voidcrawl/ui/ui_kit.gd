@@ -91,6 +91,19 @@ static func spacer(h: int = 8) -> Control:
 	c.custom_minimum_size = Vector2(0, h)
 	return c
 
+## Controls parented directly to a CanvasLayer do not resolve anchors (their size stays 0), so
+## full-screen overlays are sized to the viewport by hand and kept in sync.
+static func fit_to_viewport(c: Control) -> void:
+	var fit := func():
+		if is_instance_valid(c) and c.is_inside_tree():
+			c.position = Vector2.ZERO
+			c.size = c.get_viewport_rect().size
+	fit.call()
+	c.get_viewport().size_changed.connect(fit)
+	c.tree_exiting.connect(func():
+		if c.get_viewport() != null and c.get_viewport().size_changed.is_connected(fit):
+			c.get_viewport().size_changed.disconnect(fit))
+
 ## Safe-area margins in virtual pixels (notches / rounded corners). Never less than `minimum`.
 static func safe_margins(viewport: Viewport, minimum: float = 14.0) -> Dictionary:
 	var m := {"left": minimum, "right": minimum, "top": minimum, "bottom": minimum}

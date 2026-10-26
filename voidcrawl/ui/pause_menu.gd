@@ -4,6 +4,7 @@ extends Control
 
 signal resume
 signal open_pack
+signal open_howto
 signal open_settings
 signal quit_to_menu
 
@@ -25,9 +26,9 @@ func _ready() -> void:
 	v.custom_minimum_size = Vector2(380, 0)
 	panel.add_child(v)
 	v.add_child(VCUI.label("PAUSED", 38, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
-	var items := [["RESUME", "resume"], ["PACK & HERO", "pack"], ["SETTINGS", "settings"], ["SAVE & QUIT", "quit"]]
+	var items := [["RESUME", "resume"], ["PACK & HERO", "pack"], ["HOW TO PLAY", "howto"], ["SETTINGS", "settings"], ["SAVE & QUIT", "quit"]]
 	for it in items:
-		var b := VCUI.button(String(it[0]), Vector2(380, 66), 26)
+		var b := VCUI.button(String(it[0]), Vector2(380, 58), 26)
 		b.pressed.connect(_pressed.bind(String(it[1])))
 		v.add_child(b)
 
@@ -35,6 +36,7 @@ func _pressed(id: String) -> void:
 	match id:
 		"resume": resume.emit()
 		"pack": open_pack.emit()
+		"howto": open_howto.emit()
 		"settings": open_settings.emit()
 		"quit": quit_to_menu.emit()
 

@@ -186,6 +186,7 @@ func _build_detail(dv: VBoxContainer) -> void:
 	dv.add_child(VCUI.label("%s  -  %s  -  item level %d" % [VCDefs.rarity_name(int(it["rarity"])), VCDefs.SLOT_NAMES[int(it["slot"])], int(it["ilvl"])], 16, VCDefs.COL_TEXT_DIM))
 	for line in VCItems.describe(it):
 		dv.add_child(VCUI.label(String(line), 19, VCDefs.COL_TEXT))
+	_add_set_info(dv, it)
 	if _sel["src"] == "inv":
 		dv.add_child(VCUI.spacer(4))
 		dv.add_child(VCUI.label("IF YOU EQUIP IT", 16, VCDefs.COL_VIOLET))
@@ -215,6 +216,28 @@ func _build_detail(dv: VBoxContainer) -> void:
 		ue.disabled = p.inventory.size() >= VCProfile.INV_CAP
 		ue.pressed.connect(_do_unequip)
 		bh.add_child(ue)
+
+func _add_set_info(dv: VBoxContainer, it: Dictionary) -> void:
+	var sid := VCSets.set_of(it)
+	if sid == "" or not VCSets.DEFS.has(sid):
+		return
+	var d: Dictionary = VCSets.DEFS[sid]
+	var have: int = int(VCSets.counts(VC.profile.equipment).get(sid, 0))
+	if _sel.get("src", "") == "inv":
+		# what the count would be after equipping this piece (it replaces the same slot)
+		var cur: Dictionary = VC.profile.equipment.get(int(it["slot"]), {})
+		have += 1 - (1 if VCSets.set_of(cur) == sid else 0)
+	dv.add_child(VCUI.spacer(2))
+	var gcol: Color = d["glow"]
+	dv.add_child(VCUI.label("%s  (%d/4)" % [String(d["name"]), have], 19, gcol))
+	var l2 := VCUI.label("2 pieces: %s" % String(d["t2"]), 16, gcol if have >= 2 else VCDefs.COL_TEXT_DIM)
+	l2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l2.custom_minimum_size = Vector2(340, 0)
+	dv.add_child(l2)
+	var l4 := VCUI.label("4 pieces: %s" % String(d["t4"]), 16, gcol if have >= 4 else VCDefs.COL_TEXT_DIM)
+	l4.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l4.custom_minimum_size = Vector2(340, 0)
+	dv.add_child(l4)
 
 func _autowrap_last(dv: VBoxContainer) -> void:
 	var l := dv.get_child(dv.get_child_count() - 1) as Label

@@ -142,7 +142,8 @@ func interact(player: Node) -> bool:
 			if used:
 				return false
 			used = true
-			_lid.rotation.x = -1.9
+			var tw := create_tween()
+			tw.tween_property(_lid, "rotation:x", -1.9, 0.38).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			if _light != null:
 				_light.light_energy = 0.25
 			activated.emit(self)

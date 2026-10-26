@@ -1,6 +1,6 @@
-"VOIDCRAWL Game Icon" (media/game-icon.png)
+"VOIDBORN Game Icon" (media/game-icon.png)
 
-VOIDCRAWL — Mobile Dungeon Adventure
+VOIDBORN — Mobile Dungeon Adventure
 
 "Godot Engine" (https://img.shields.io/badge/Godot-4.x-478CBF?logo=godotengine&logoColor=white)
 "Platform" (https://img.shields.io/badge/Platform-Android-3DDC84?logo=android&logoColor=white)
@@ -8,11 +8,11 @@ VOIDCRAWL — Mobile Dungeon Adventure
 "Development Status" (https://img.shields.io/badge/Status-In_Development-orange)
 "GitHub commit activity" (https://img.shields.io/github/commit-activity/m/YOUR_USERNAME/YOUR_REPOSITORY)
 
-VOIDCRAWL is an original 3D dungeon-crawling adventure being developed for Android using Godot Engine.
+VOIDBORN is an original 3D dungeon-crawling adventure being developed for Android using Godot Engine.
 
 Explore mysterious dungeons, fight dangerous creatures, discover valuable loot, upgrade your equipment, and challenge powerful bosses in a dark fantasy world.
 
-Inspired by the dungeon-crawling genre, VOIDCRAWL aims to deliver an accessible mobile action RPG with original characters, environments, combat mechanics, and a distinctive black-and-purple visual identity.
+Inspired by the dungeon-crawling genre, VOIDBORN aims to deliver an accessible mobile action RPG with original characters, environments, combat mechanics, and a distinctive black-and-purple visual identity.
 
 Objective
 
@@ -62,7 +62,7 @@ When a tested Android build becomes available:
 2. Select a release containing an APK.
 3. Download the APK to your Android device.
 4. Allow installation from the relevant source if Android requests permission.
-5. Install and launch VOIDCRAWL.
+5. Install and launch VOIDBORN.
 
 "View Releases" (../../releases)
 
@@ -167,7 +167,7 @@ Links
 
 Infinity Studios
 
-VOIDCRAWL — Enter the unknown.
+VOIDBORN — Enter the unknown.
 
 Explore deeper. Discover hidden treasures. Conquer the darkness.
 

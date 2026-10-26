@@ -190,18 +190,18 @@ func cancel(slot_id: int) -> void:
 		(_decals[slot_id]["node"] as Node3D).visible = false
 
 ## Pulsing violet pillar used when enemies materialise.
-func spawn_pillar(pos: Vector3, life: float = 0.7) -> void:
+func spawn_pillar(pos: Vector3, life: float = 0.7, color: Color = Color(0.6, 0.25, 1.0), height: float = 1.0, wide: float = 1.0) -> void:
 	if VCCrashGuard.level >= 3:
 		return
 	var d := _decal_slot()
 	var mi: MeshInstance3D = d["node"]
 	mi.mesh = VCMats.box(Vector3(1.0, 1.0, 1.0))
-	mi.material_override = VCMats.fx(Color(0.6, 0.25, 1.0, 0.55), true).duplicate()
-	mi.position = Vector3(pos.x, 1.2, pos.z)
+	mi.material_override = VCMats.fx(Color(color.r, color.g, color.b, 0.55), true).duplicate()
+	mi.position = Vector3(pos.x, 1.2 * height, pos.z)
 	mi.rotation = Vector3.ZERO
-	mi.scale = Vector3(0.9, 2.4, 0.9)
+	mi.scale = Vector3(0.9 * wide, 2.4 * height, 0.9 * wide)
 	mi.visible = true
-	d.merge({"t": 0.0, "life": life, "kind": "pillar", "a": 0.0, "b": 0.0, "color": Color(0.6, 0.25, 1.0), "active": true}, true)
+	d.merge({"t": 0.0, "life": life, "kind": "pillar", "a": height, "b": wide, "color": color, "active": true}, true)
 
 func _process(delta: float) -> void:
 	for n in _numbers:
@@ -244,6 +244,7 @@ func _process(delta: float) -> void:
 				var pulse := 0.18 + 0.22 * k + 0.08 * sin(k * 30.0)
 				(mi.material_override as StandardMaterial3D).albedo_color = Color(col3.r, col3.g, col3.b, pulse)
 			"pillar":
-				var s2 := 0.9 * (1.0 - k)
-				mi.scale = Vector3(maxf(s2, 0.05), 2.4 + 1.5 * k, maxf(s2, 0.05))
-				(mi.material_override as StandardMaterial3D).albedo_color = Color(0.6, 0.25, 1.0, 0.55 * (1.0 - k))
+				var s2: float = 0.9 * float(d["b"]) * (1.0 - k)
+				mi.scale = Vector3(maxf(s2, 0.05), (2.4 + 1.5 * k) * float(d["a"] if float(d["a"]) > 0.0 else 1.0), maxf(s2, 0.05))
+				var pc: Color = d["color"]
+				(mi.material_override as StandardMaterial3D).albedo_color = Color(pc.r, pc.g, pc.b, 0.55 * (1.0 - k))

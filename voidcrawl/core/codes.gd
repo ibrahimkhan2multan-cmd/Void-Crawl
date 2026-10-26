@@ -3,13 +3,14 @@ extends RefCounted
 ## Promo / easter-egg codes. Each code works once per save. Codes are matched ignoring case,
 ## spaces, dashes and underscores. A code never needs the network.
 
-const MAAZ_LORE := "Forged for InfinityxMaaz - a gift from Infinity Studios."
+const MAAZ_LORE := "The power of IBRAHIM and Maaz friendship."
 
 ## id -> {"msg": toast, "coins": n, "xp": n, "points": n, "potions": n, "bombs": n, "items": [spec...]}
 ## item spec: {"base": id, "rarity": r, "ilvl": n}  or  {"custom": "maaz"}
 const DEFS := {
-	"INFINITYXMAAZ": {"msg": "Easter egg unlocked: the Infinity Edge!", "coins": 250, "items": [{"custom": "maaz"}]},
+	"IBRAHIMXMAAZ": {"msg": "Easter egg unlocked: The Power of Friendship!", "coins": 250, "items": [{"custom": "maaz"}]},
 	"VOIDCRAWL": {"msg": "Welcome to the Void, crawler.", "coins": 300},
+	"VOIDBORN": {"msg": "Born of the Void.", "coins": 350},
 	"INFINITYSTUDIOS": {"msg": "Supplies from Infinity Studios.", "coins": 400, "potions": 3, "bombs": 5},
 	"SWIFTFEET": {"msg": "Fleet-footed!", "items": [{"base": "windrunners", "rarity": 2, "ilvl": 4}]},
 	"EMBERDEEP": {"msg": "The forge remembers you.", "items": [{"base": "ember_mail", "rarity": 2, "ilvl": 6}, {"base": "ember_striders", "rarity": 2, "ilvl": 6}]},
@@ -17,6 +18,7 @@ const DEFS := {
 	"LUCKYDAY": {"msg": "Fortune smiles.", "coins": 200, "items": [{"base": "lucky_coin", "rarity": 3, "ilvl": 5}]},
 	"DELVER": {"msg": "Your potential grows.", "points": 3},
 	"HEARTSTONE": {"msg": "A beating heart of stone.", "items": [{"base": "heartstone", "rarity": 3, "ilvl": 6}]},
+	"BESTFRIENDS": {"msg": "The Bond of Friendship armour set!", "items": [{"base": "bf_helm", "rarity": 3, "ilvl": 6}, {"base": "bf_plate", "rarity": 3, "ilvl": 6}, {"base": "bf_boots", "rarity": 3, "ilvl": 6}, {"base": "bf_charm", "rarity": 3, "ilvl": 6}]},
 	"VOIDWALKER": {"msg": "You walk between worlds.", "items": [{"base": "voidwalkers", "rarity": 3, "ilvl": 7}]},
 }
 
@@ -31,7 +33,7 @@ static func _make_item(spec: Dictionary, p: VCProfile) -> Dictionary:
 	if String(spec.get("custom", "")) == "maaz":
 		return {
 			"uid": p.alloc_uid(), "base": "infinity_edge", "slot": VCDefs.Slot.WEAPON,
-			"rarity": VCDefs.Rarity.EPIC, "ilvl": 6, "name": "Infinity Edge of Maaz",
+			"rarity": VCDefs.Rarity.EPIC, "ilvl": 6, "name": "The Power of Friendship",
 			"dmg_min": 15, "dmg_max": 20, "crit": 6, "speed": 5,
 			"affixes": [{"id": "leech", "val": 2}], "lore": MAAZ_LORE,
 		}

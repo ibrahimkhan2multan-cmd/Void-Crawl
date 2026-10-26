@@ -76,6 +76,11 @@ var _boot_l: MeshInstance3D
 var _boot_r: MeshInstance3D
 var _parts: Array = []
 var _light: OmniLight3D
+var armor_fx: VCArmorFx = null
+var _fs_t := 0.0        # friendship-sword sparkle timer
+var _fs_orbs: Array = []
+var _pose_t := 0.0      # victory / level-up pose timer
+var _pose_kind := ""
 
 func _ready() -> void:
 	collision_layer = VCDefs.L_PLAYER
@@ -89,6 +94,9 @@ func _ready() -> void:
 	_coll.position = Vector3(0, 0.8, 0)
 	add_child(_coll)
 	_build_rig()
+	armor_fx = VCArmorFx.new()
+	armor_fx.setup(self, rig)
+	add_child(armor_fx)
 	_light = OmniLight3D.new()
 	_light.light_color = Color(1.0, 0.78, 0.55)     # warm lantern so the hero pops against cool stone
 	_light.light_energy = 1.1
@@ -168,6 +176,29 @@ func _build_rig() -> void:
 	_weapon_root.position = Vector3(0, -0.62, -0.1)
 	_arm_r.add_child(_weapon_root)
 
+func is_friend_sword() -> bool:
+	if profile == null:
+		return false
+	var wp: Dictionary = profile.equipment.get(VCDefs.Slot.WEAPON, {})
+	return not wp.is_empty() and String(wp.get("base", "")) == "infinity_edge"
+
+## The Power of Friendship: two-tone blade (cyan | magenta), gold guard, orbiting sparkles.
+func _build_friend_sword(wp: Dictionary) -> void:
+	_fs_orbs.clear()
+	if wp.is_empty() or String(wp.get("base", "")) != "infinity_edge":
+		return
+	for c in _weapon_root.get_children():
+		c.queue_free()
+	VCMats.part(_weapon_root, Vector3(0.09, 0.12, 0.46), Vector3(0, 0, 0.1), Color(0.95, 0.8, 0.3), 0.6)
+	VCMats.part(_weapon_root, Vector3(0.42, 0.08, 0.08), Vector3(0, 0, -0.14), Color(1.0, 0.85, 0.35), 1.2)
+	VCMats.part(_weapon_root, Vector3(0.06, 0.06, 0.06), Vector3(0, 0.0, 0.34), Color(1.0, 0.4, 0.75), 2.2)
+	VCMats.part(_weapon_root, Vector3(0.05, 0.05, 1.02), Vector3(-0.045, 0, -0.68), Color(0.35, 0.95, 1.0), 2.2)
+	VCMats.part(_weapon_root, Vector3(0.05, 0.05, 1.02), Vector3(0.045, 0, -0.68), Color(1.0, 0.4, 0.8), 2.2)
+	VCMats.part(_weapon_root, Vector3(0.12, 0.05, 0.12), Vector3(0, 0, -1.22), Color(1.0, 0.95, 0.8), 3.0)
+	for i in 3:
+		var o := VCMats.part(_weapon_root, Vector3(0.07, 0.07, 0.07), Vector3(0, 0, -0.7), Color(0.4, 1.0, 1.0) if i % 2 == 0 else Color(1.0, 0.5, 0.85), 3.0)
+		_fs_orbs.append({"n": o, "ph": TAU * float(i) / 3.0})
+
 func refresh_visuals() -> void:
 	if profile == null:
 		return
@@ -237,6 +268,9 @@ func refresh_visuals() -> void:
 	_boot_r.material_override = VCMats.solid(bc, be)
 	if _light != null:
 		_light.light_color = Color(0.75, 0.55, 1.0).lerp(glow, 0.25)
+	_build_friend_sword(wp)
+	if armor_fx != null:
+		armor_fx.refresh(profile.equipment)
 
 # ----------------------------------------------------------------- tick
 func _physics_process(delta: float) -> void:
@@ -427,7 +461,12 @@ func _do_attack_hit() -> void:
 		return
 	var arc_deg: float = float(stats["arc"]) * (1.25 if combo % 3 == 2 else 1.0)
 	var reach: float = float(stats["range"]) * (1.15 if combo % 3 == 2 else 1.0)
-	world.fx.slash(global_position, facing, reach, arc_deg, Color(0.85, 0.65, 1.0) if combo % 3 != 2 else Color(1.0, 0.8, 1.0))
+	var slash_col := Color(0.85, 0.65, 1.0) if combo % 3 != 2 else Color(1.0, 0.8, 1.0)
+	if is_friend_sword():
+		slash_col = Color(0.35, 0.95, 1.0) if combo % 2 == 0 else Color(1.0, 0.45, 0.85)
+		if combo % 3 == 2:
+			slash_col = Color(1.0, 0.9, 0.5)
+	world.fx.slash(global_position, facing, reach, arc_deg, slash_col)
 	var hits := 0
 	for t in _targets_in_cone(reach, arc_deg):
 		hit_target(t, _attack_mult, (3.5 if combo % 3 == 2 else 2.2) * (1.8 if String(stats.get("weapon_kind", "")) == "hammer" else 1.0))
@@ -471,6 +510,67 @@ func hit_target(target: Node, mult: float, knock: float) -> float:
 		world.on_player_hit(target, dealt, crit)
 	return dealt
 
+func _tick_friend_sword(delta: float) -> void:
+	if _fs_orbs.is_empty():
+		return
+	_fs_t += delta
+	for o in _fs_orbs:
+		var n: MeshInstance3D = o["n"]
+		if is_instance_valid(n):
+			var a: float = _fs_t * 5.0 + float(o["ph"])
+			n.position = Vector3(cos(a) * 0.16, sin(a) * 0.16, -0.25 - fposmod(_fs_t * 0.9 + float(o["ph"]), 1.0) * 0.95)
+			n.scale = Vector3.ONE * (0.6 + 0.6 * sin(_fs_t * 8.0 + float(o["ph"])))
+
+## Short celebratory poses: "victory" (sword raised), "levelup" (hop + arms up), "equip" (little flex).
+func play_pose(kind: String, dur: float = 1.4) -> void:
+	_pose_kind = kind
+	_pose_t = dur
+
+func _tick_pose(delta: float) -> void:
+	if _pose_t <= 0.0 or state == S.DEAD or state == S.ATTACK or state == S.DODGE:
+		return
+	_pose_t -= delta
+	var k := clampf(_pose_t, 0.0, 1.0)
+	match _pose_kind:
+		"victory":
+			_arm_r.rotation.x = lerpf(_arm_r.rotation.x, -3.0, 0.25)
+			_arm_r.rotation.z = lerpf(_arm_r.rotation.z, -0.2, 0.25)
+			_arm_l.rotation.x = lerpf(_arm_l.rotation.x, -0.6, 0.2)
+			rig.position.y = absf(sin(_anim_t * 6.0)) * 0.12
+		"levelup":
+			var up := sin(clampf(1.0 - _pose_t / 1.2, 0.0, 1.0) * PI)
+			rig.position.y = up * 0.6
+			_arm_l.rotation.x = lerpf(_arm_l.rotation.x, -2.8, 0.3)
+			_arm_r.rotation.x = lerpf(_arm_r.rotation.x, -2.8, 0.3)
+		"equip":
+			_arm_l.rotation.x = lerpf(_arm_l.rotation.x, -1.3, 0.3)
+			_arm_r.rotation.x = lerpf(_arm_r.rotation.x, -1.3, 0.3)
+			rig.rotation.y += delta * 6.0 * k
+	if _pose_t <= 0.0:
+		_pose_kind = ""
+
+## Frostwarden 4-piece: a dodge leaves a freezing shockwave.
+func _dodge_wave() -> void:
+	var pct: float = float(stats.get("dodge_wave", 0.0))
+	if pct <= 0.0:
+		return
+	var avg: float = (float(stats["dmg_min"]) + float(stats["dmg_max"])) * 0.5
+	var col := Color(0.6, 0.9, 1.0)
+	world.fx.ring(global_position, 3.2, col, 0.45)
+	world.fx.burst(global_position + Vector3(0, 0.3, 0), col, 14, 5.0, 1.0)
+	for list in [world.enemies, world.breakables]:
+		for t in list.duplicate():
+			if not t.is_alive():
+				continue
+			var d: float = Vector2(t.global_position.x - global_position.x, t.global_position.z - global_position.z).length()
+			if d <= 3.2 + t.hit_radius:
+				var dmg := maxf(1.0, round(avg * float(stats["dmg_mult"]) * pct))
+				var dealt: float = t.take_hit(dmg, global_position, false, 4.0, self)
+				if dealt > 0.0:
+					world.on_player_hit(t, dealt, false)
+					if t is VCEnemy:
+						t.stun(0.6)
+
 # ----------------------------------------------------------------- dodge
 func _try_dodge(dir: Vector3) -> void:
 	if state == S.DODGE or dodge_cd > 0.0 or state == S.DEAD:
@@ -485,6 +585,7 @@ func _try_dodge(dir: Vector3) -> void:
 	world.play_sfx("dodge", -3.0)
 	world.fx.burst(global_position + Vector3(0, 0.2, 0), Color(0.6, 0.45, 0.9), 8, 2.5, 0.8)
 	VC.vibrate(15)
+	_dodge_wave()
 	dodged.emit()
 
 # --------------------------------------------------------------- ability
@@ -666,6 +767,10 @@ func _animate(delta: float, mv: Vector2) -> void:
 			_arm_r.rotation.x = swing * 0.8 - 0.2
 			_arm_r.rotation.z = lerpf(_arm_r.rotation.z, 0.0, 0.2)
 	_cape.rotation.x = -0.1 - run * 0.35 + sin(_anim_t * 4.0) * 0.03
+	if armor_fx != null:
+		armor_fx.tick(delta, run)
+	_tick_friend_sword(delta)
+	_tick_pose(delta)
 	if mv.length() < 0.05 and state == S.IDLE:
 		_leg_l.rotation.x = lerpf(_leg_l.rotation.x, 0.0, 0.2)
 		_leg_r.rotation.x = lerpf(_leg_r.rotation.x, 0.0, 0.2)

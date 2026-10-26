@@ -29,8 +29,28 @@ const BASES := {
 		"range": 16.0, "arc": 0.0, "ranged": true, "color": Color(1.0, 0.55, 0.25)},
 	"frostbrand": {"name": "Frostbrand", "slot": 0, "kind": "sword", "dmg": [13, 17], "interval": 0.46,
 		"range": 2.8, "arc": 120.0, "ranged": false, "color": Color(0.6, 0.9, 1.0)},
-	"infinity_edge": {"name": "Infinity Edge", "slot": 0, "kind": "sword", "dmg": [15, 20], "interval": 0.38,
+	"infinity_edge": {"name": "The Power of Friendship", "slot": 0, "kind": "sword", "dmg": [15, 20], "interval": 0.38,
 		"range": 2.9, "arc": 125.0, "ranged": false, "color": Color(0.45, 0.95, 1.0), "unique": true},
+	"gg_helm": {"name": "Gloomguard Helm", "slot": 1, "kind": "helm", "def": 9, "hp": 16, "color": Color(0.5, 0.52, 0.72), "set": "gloomguard", "unique": true},
+	"gg_plate": {"name": "Gloomguard Plate", "slot": 2, "kind": "armor", "def": 16, "hp": 34, "speed": -2, "color": Color(0.46, 0.48, 0.68), "set": "gloomguard", "unique": true},
+	"gg_greaves": {"name": "Gloomguard Greaves", "slot": 4, "kind": "boots", "def": 6, "hp": 12, "speed": 3, "color": Color(0.44, 0.46, 0.64), "set": "gloomguard", "unique": true},
+	"gg_sigil": {"name": "Gloomguard Sigil", "slot": 3, "kind": "trinket", "hp": 24, "def": 4, "color": Color(0.75, 0.5, 1.0), "set": "gloomguard", "unique": true},
+	"vw_crown": {"name": "Voidwalker Crown", "slot": 1, "kind": "helm", "def": 4, "hp": 10, "crit": 5, "color": Color(0.45, 0.2, 0.7), "set": "voidwalker", "unique": true},
+	"vw_robes": {"name": "Voidwalker Robes", "slot": 2, "kind": "armor", "def": 7, "hp": 18, "crit": 3, "cdr": 3, "color": Color(0.38, 0.15, 0.62), "set": "voidwalker", "unique": true},
+	"vw_treads": {"name": "Voidwalker Treads", "slot": 4, "kind": "boots", "speed": 9, "cdr": 3, "color": Color(0.55, 0.2, 0.85), "set": "voidwalker", "unique": true},
+	"vw_core": {"name": "Voidwalker Core", "slot": 3, "kind": "trinket", "cdr": 7, "crit": 3, "color": Color(0.9, 0.4, 1.0), "set": "voidwalker", "unique": true},
+	"el_helm": {"name": "Emberlord Horned Helm", "slot": 1, "kind": "helm", "def": 7, "hp": 14, "atk_pct": 3, "color": Color(0.28, 0.14, 0.12), "set": "emberlord", "unique": true},
+	"el_mail": {"name": "Emberlord Mail", "slot": 2, "kind": "armor", "def": 13, "hp": 28, "atk_pct": 4, "color": Color(0.3, 0.15, 0.13), "set": "emberlord", "unique": true},
+	"el_stompers": {"name": "Emberlord Stompers", "slot": 4, "kind": "boots", "def": 4, "hp": 8, "speed": 6, "atk_pct": 2, "color": Color(0.26, 0.13, 0.11), "set": "emberlord", "unique": true},
+	"el_brand": {"name": "Emberlord Brand", "slot": 3, "kind": "trinket", "atk_pct": 7, "leech": 1, "color": Color(1.0, 0.5, 0.15), "set": "emberlord", "unique": true},
+	"fw_crown": {"name": "Frostwarden Crown", "slot": 1, "kind": "helm", "def": 8, "hp": 15, "cdr": 3, "color": Color(0.65, 0.85, 1.0), "set": "frostwarden", "unique": true},
+	"fw_plate": {"name": "Frostwarden Plate", "slot": 2, "kind": "armor", "def": 15, "hp": 32, "color": Color(0.6, 0.78, 0.95), "set": "frostwarden", "unique": true},
+	"fw_striders": {"name": "Frostwarden Striders", "slot": 4, "kind": "boots", "def": 4, "hp": 8, "speed": 8, "color": Color(0.7, 0.92, 1.0), "set": "frostwarden", "unique": true},
+	"fw_heart": {"name": "Frostwarden Heart", "slot": 3, "kind": "trinket", "hp": 30, "def": 3, "regen": 30, "color": Color(0.5, 0.9, 1.0), "set": "frostwarden", "unique": true},
+	"bf_helm": {"name": "Helm of the Bond", "slot": 1, "kind": "helm", "def": 7, "hp": 14, "crit": 3, "color": Color(0.95, 0.8, 0.35), "set": "friendship", "unique": true},
+	"bf_plate": {"name": "Plate of the Bond", "slot": 2, "kind": "armor", "def": 12, "hp": 26, "atk_pct": 3, "color": Color(0.9, 0.75, 0.3), "set": "friendship", "unique": true},
+	"bf_boots": {"name": "Boots of the Bond", "slot": 4, "kind": "boots", "def": 4, "hp": 8, "speed": 8, "color": Color(0.5, 0.9, 1.0), "set": "friendship", "unique": true},
+	"bf_charm": {"name": "Charm of the Bond", "slot": 3, "kind": "trinket", "hp": 18, "coin": 10, "regen": 20, "color": Color(1.0, 0.45, 0.75), "set": "friendship", "unique": true},
 	"hollow_cap": {"name": "Hollow Cap", "slot": 1, "kind": "helm", "def": 4, "hp": 10, "color": Color(0.6, 0.58, 0.68)},
 	"crypt_hood": {"name": "Crypt Hood", "slot": 1, "kind": "helm", "def": 2, "hp": 6, "speed": 3, "color": Color(0.35, 0.25, 0.5)},
 	"bone_helm": {"name": "Bone Helm", "slot": 1, "kind": "helm", "def": 6, "hp": 14, "color": Color(0.85, 0.82, 0.74)},
@@ -134,6 +154,8 @@ static func generate(rng: RandomNumberGenerator, ilvl: int, rarity: int = -1, sl
 		"uid": uid, "base": base_id, "slot": slot, "rarity": rarity, "ilvl": maxi(ilvl, 1),
 		"affixes": [],
 	}
+	if b.has("set"):
+		item["set"] = String(b["set"])
 	if slot == VCDefs.Slot.WEAPON:
 		var d: Array = b["dmg"]
 		item["dmg_min"] = maxi(1, int(round(float(d[0]) * lm * rm)))
@@ -166,6 +188,8 @@ static func generate(rng: RandomNumberGenerator, ilvl: int, rarity: int = -1, sl
 static func _make_name(rng: RandomNumberGenerator, item: Dictionary, b: Dictionary) -> String:
 	var r: int = item["rarity"]
 	var base_name: String = b["name"]
+	if b.has("set"):
+		return base_name
 	if r == VCDefs.Rarity.COMMON:
 		return base_name
 	if r == VCDefs.Rarity.UNCOMMON:
@@ -189,6 +213,8 @@ static func sanitize(raw: Dictionary) -> Dictionary:
 	item["name"] = String(raw.get("name", BASES[item["base"]]["name"]))
 	if raw.has("lore"):
 		item["lore"] = String(raw["lore"])
+	if BASES[item["base"]].has("set"):
+		item["set"] = String(BASES[item["base"]]["set"])
 	for k in ["dmg_min", "dmg_max", "def", "hp", "speed", "crit", "atk_pct", "cdr", "leech", "coin", "regen"]:
 		if raw.has(k):
 			item[k] = int(raw[k])
@@ -205,6 +231,7 @@ static func totals(equipment: Dictionary) -> Dictionary:
 		"dmg_min": 3.0, "dmg_max": 4.0, "interval": 0.5, "range": 2.2, "arc": 100.0, "ranged": false,
 		"kind": "fist", "def": 0.0, "hp": 0.0, "speed": 0.0, "crit": 0.0, "atk_pct": 0.0,
 		"cdr": 0.0, "leech": 0.0, "coin": 0.0, "regen": 0.0,
+		"kill_heal": 0.0, "dodge_wave": 0.0, "nova_pct": 0.0,
 	}
 	for slot in equipment:
 		var it: Dictionary = equipment[slot]
@@ -228,6 +255,9 @@ static func totals(equipment: Dictionary) -> Dictionary:
 			var aid: String = a["id"]
 			var key := "atk_pct" if aid == "atk_pct" else aid
 			t[key] = float(t.get(key, 0.0)) + float(a["val"])
+	var sb := VCSets.bonus_totals(equipment)
+	for k in sb:
+		t[k] = float(t.get(k, 0.0)) + float(sb[k])
 	return t
 
 static func affix_text(a: Dictionary) -> String:
@@ -280,6 +310,8 @@ static func score(item: Dictionary) -> float:
 	s += float(item.get("def", 0)) * 2.0 + float(item.get("hp", 0)) * 0.6
 	s += float(item.get("speed", 0)) * 2.0 + float(item.get("crit", 0)) * 3.0
 	s += float(item.get("atk_pct", 0)) * 3.0 + float(item.get("cdr", 0)) * 2.0 + float(item.get("leech", 0)) * 6.0 + float(item.get("regen", 0)) * 0.5 + float(item.get("coin", 0)) * 0.4
+	if item.has("set"):
+		s += 12.0
 	for a in item.get("affixes", []):
 		match String(a["id"]):
 			"atk_pct": s += float(a["val"]) * 3.0

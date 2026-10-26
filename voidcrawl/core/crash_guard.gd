@@ -74,7 +74,7 @@ static func on_start() -> void:
 		var txt := _previous_log_text()
 		var f := FileAccess.open(REPORT, FileAccess.WRITE)
 		if f != null:
-			f.store_string("VOIDCRAWL possible crash report\nversion %s\ndevice %s | %s | gpu %s\ntime %s\n\n--- last state snapshots before the crash ---\n%s\n\n%s" % [
+			f.store_string("VOIDBORN possible crash report\nversion %s\ndevice %s | %s | gpu %s\ntime %s\n\n--- last state snapshots before the crash ---\n%s\n\n%s" % [
 				String(ProjectSettings.get_setting("application/config/version", "?")) + " fallback_level_now=%d" % level + "\nLAST MARK BEFORE CRASH (frame|phase|state): " + FileAccess.get_file_as_string(MARK_PREV).strip_edges(), OS.get_model_name(), OS.get_version(),
 				RenderingServer.get_video_adapter_name(), Time.get_datetime_string_from_system(), _tail(CRUMBS_PREV, 24), txt])
 			f.close()

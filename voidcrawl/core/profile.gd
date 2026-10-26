@@ -121,7 +121,9 @@ func derived() -> Dictionary:
 	d["weapon_kind"] = String(t["kind"])
 	d["move_speed"] = 6.2 * (1.0 + agi * 0.008 + clampf(float(t["speed"]), -20.0, 55.0) / 100.0)
 	d["crit"] = clampf(0.05 + agi * 0.004 + float(t["crit"]) / 100.0, 0.0, 0.75)
-	d["ability_mult"] = 1.0 + arc * 0.06
+	d["ability_mult"] = 1.0 + arc * 0.06 + float(t["nova_pct"]) / 100.0
+	d["kill_heal"] = float(t["kill_heal"]) / 100.0
+	d["dodge_wave"] = float(t["dodge_wave"]) / 100.0
 	d["cd_mult"] = clampf(1.0 - arc * 0.01 - float(t["cdr"]) / 100.0, 0.4, 1.0)
 	d["leech"] = float(t["leech"]) / 100.0
 	d["coin_mult"] = 1.0 + float(t["coin"]) / 100.0

@@ -2,7 +2,7 @@ class_name VCDefs
 extends RefCounted
 ## Shared constants for VOIDCRAWL (Infinity Studios). Pure data, no logic.
 
-const GAME_NAME := "VOIDCRAWL"
+const GAME_NAME := "VOIDBORN"
 const STUDIO := "Infinity Studios"
 const VERSION := "0.1.0"
 const SAVE_VERSION := 1

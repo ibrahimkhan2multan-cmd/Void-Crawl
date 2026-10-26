@@ -34,6 +34,12 @@ var _vignette_a := 0.0
 var _banner_t := 0.0
 var _banner_total := 3.0
 var _toast_items: Array = []
+var _bar_top: ColorRect
+var _bar_bot: ColorRect
+var _bar_cur := 0.0
+var _bar_want := 0.0
+var _flash_rect: ColorRect
+var _flash_a := 0.0
 var _obj_flash := 0.0
 const MINI_PX := 3
 
@@ -67,6 +73,17 @@ func _ready() -> void:
 		dark.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		dark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		root.add_child(dark)
+	_bar_top = ColorRect.new()
+	_bar_bot = ColorRect.new()
+	for b in [_bar_top, _bar_bot]:
+		(b as ColorRect).color = Color(0, 0, 0, 1)
+		(b as ColorRect).mouse_filter = Control.MOUSE_FILTER_IGNORE
+		(b as ColorRect).size = Vector2(0, 0)
+		root.add_child(b)
+	_flash_rect = ColorRect.new()
+	_flash_rect.color = Color(1, 1, 1, 0)
+	_flash_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(_flash_rect)
 	vignette = ColorRect.new()
 	vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
 	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -304,7 +321,28 @@ func _refresh_xp() -> void:
 		xp_bar.set_values(float(p.xp), float(p.xp_needed()))
 	coin_label.text = "%d" % p.coins
 
+## Cinematic black bars slide in (on) or out (off).
+func letterbox(on: bool) -> void:
+	_bar_want = 1.0 if on else 0.0
+
+## Full-screen colour flash that fades out (level-up, set bonus, big hits).
+func screen_flash(color: Color, strength: float = 0.5) -> void:
+	_flash_rect.color = Color(color.r, color.g, color.b, 0.0)
+	_flash_a = strength
+
 func _process(delta: float) -> void:
+	var real_dt := delta / maxf(Engine.time_scale, 0.05)
+	var vs := get_viewport().get_visible_rect().size
+	_bar_cur = move_toward(_bar_cur, _bar_want, real_dt * 2.2)
+	var bh := vs.y * 0.115 * smoothstep(0.0, 1.0, _bar_cur)
+	_bar_top.position = Vector2.ZERO
+	_bar_top.size = Vector2(vs.x, bh)
+	_bar_bot.position = Vector2(0, vs.y - bh)
+	_bar_bot.size = Vector2(vs.x, bh)
+	_flash_rect.size = vs
+	if _flash_a > 0.0:
+		_flash_a = maxf(0.0, _flash_a - real_dt * 1.8)
+		_flash_rect.color.a = _flash_a
 	if player == null:
 		return
 	hp_bar.set_values(player.hp, float(player.max_hp))

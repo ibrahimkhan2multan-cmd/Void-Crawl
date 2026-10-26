@@ -13,6 +13,7 @@ static func run(t: Node) -> void:
 	await _bomb(t)
 	await _forge_and_delve(t)
 	await _frost(t)
+	await _sets(t)
 	await safe_mode(t)
 
 static func _items(t: Node) -> void:
@@ -301,7 +302,7 @@ static func _boots_and_codes(t: Node) -> void:
 	var r0 := VCCodes.redeem("nope123", p)
 	t.check("invalid code rejected", not bool(r0["ok"]))
 	var dps0 := VCProfile.dps_of(p.derived())
-	var r1 := VCCodes.redeem(" infinity-x_maaz ", p)
+	var r1 := VCCodes.redeem(" ibrahim-x_maaz ", p)
 	t.check("easter-egg code accepted (case/space/dash insensitive)", bool(r1["ok"]), String(r1["msg"]))
 	var found := false
 	for it in p.inventory:
@@ -309,12 +310,12 @@ static func _boots_and_codes(t: Node) -> void:
 			found = true
 			p.equip_from_inventory(p.inventory.find(it))
 			break
-	t.check("Infinity Edge of Maaz added", found)
+	t.check("The Power of Friendship added", found)
 	var d1 := p.derived()
 	t.check("sword is strong but not overpowered (dps %.0f vs start %.0f)" % [VCProfile.dps_of(d1), dps0], VCProfile.dps_of(d1) > dps0 * 1.3 and VCProfile.dps_of(d1) < 80.0)
-	t.check("code only works once", not bool(VCCodes.redeem("INFINITYXMAAZ", p)["ok"]))
+	t.check("code only works once", not bool(VCCodes.redeem("IBRAHIMXMAAZ", p)["ok"]))
 	var rt2 := VCProfile.from_dict(JSON.parse_string(JSON.stringify(p.to_dict())))
-	t.check("redeemed list persists and lore kept", rt2.redeemed.has("INFINITYXMAAZ") and String(rt2.equipment[VCDefs.Slot.WEAPON].get("lore", "")) != "")
+	t.check("redeemed list persists and lore kept", rt2.redeemed.has("IBRAHIMXMAAZ") and String(rt2.equipment[VCDefs.Slot.WEAPON].get("lore", "")) != "")
 	var coins0 := p.coins
 	t.check("coin code works", bool(VCCodes.redeem("voidcrawl", p)["ok"]) and p.coins == coins0 + 300)
 	for k in VCCodes.DEFS:
@@ -381,3 +382,134 @@ static func _frost(t: Node) -> void:
 	await GP._frames(t, 30)
 	m.queue_free()
 	await t.get_tree().process_frame
+
+
+static func _sets(t: Node) -> void:
+	t.section("content: armour sets, cinematics, friendship sword")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var structure_ok := true
+	for sid in VCSets.DEFS:
+		var d: Dictionary = VCSets.DEFS[sid]
+		for key in ["helm", "armor", "boots", "trinket"]:
+			var bid := String(d["pieces"][key])
+			if not VCItems.BASES.has(bid) or String(VCItems.BASES[bid].get("set", "")) != sid or not bool(VCItems.BASES[bid].get("unique", false)):
+				structure_ok = false
+				print("  bad set base ", sid, " ", key, " ", bid)
+	t.check("5 sets x 4 pieces all defined, unique and tagged", structure_ok and VCSets.DEFS.size() == 5)
+	var leaked := false
+	for i in 400:
+		if VCSets.set_of(VCItems.generate(rng, 5, -1, -1, 0.0, i)) != "":
+			leaked = true
+	t.check("random loot never rolls set pieces", not leaked)
+	VC.new_game()
+	var p: VCProfile = VC.profile
+	var base := p.derived()
+	var slots := {"helm": VCDefs.Slot.HELM, "armor": VCDefs.Slot.ARMOR, "boots": VCDefs.Slot.BOOTS, "trinket": VCDefs.Slot.TRINKET}
+	var pieces: Dictionary = {}
+	for key in slots:
+		var it := VCSets.make_piece(rng, "frostwarden", 6, VCDefs.Rarity.EPIC, int(slots[key]), p.alloc_uid())
+		t.check("frostwarden %s piece has right slot + set" % key, int(it["slot"]) == int(slots[key]) and VCSets.set_of(it) == "frostwarden")
+		pieces[key] = it
+	p.equipment[VCDefs.Slot.HELM] = pieces["helm"]
+	p.equipment[VCDefs.Slot.ARMOR] = pieces["armor"]
+	var d2 := p.derived()
+	t.check("2-piece bonus applies (speed up)", float(d2["move_speed"]) > float(base["move_speed"]))
+	t.check("no dodge wave at 2 pieces", float(d2["dodge_wave"]) == 0.0)
+	p.equipment[VCDefs.Slot.BOOTS] = pieces["boots"]
+	p.equipment[VCDefs.Slot.TRINKET] = pieces["trinket"]
+	var d4 := p.derived()
+	t.check("4-piece Frostwarden grants dodge shockwave", float(d4["dodge_wave"]) > 1.0, str(d4["dodge_wave"]))
+	var rt := VCProfile.from_dict(JSON.parse_string(JSON.stringify(p.to_dict())))
+	t.check("set pieces survive save/load with bonus intact", float(rt.derived()["dodge_wave"]) > 1.0 and VCSets.counts(rt.equipment).get("frostwarden", 0) == 4)
+	var vp := VCProfile.new_game()
+	for key in slots:
+		vp.equipment[int(slots[key])] = VCSets.make_piece(rng, "voidwalker", 6, VCDefs.Rarity.EPIC, int(slots[key]), vp.alloc_uid())
+	t.check("Voidwalker 4-piece boosts Void Nova", float(vp.derived()["ability_mult"]) > 1.4)
+	var gp := VCProfile.new_game()
+	for key in slots:
+		gp.equipment[int(slots[key])] = VCSets.make_piece(rng, "gloomguard", 6, VCDefs.Rarity.EPIC, int(slots[key]), gp.alloc_uid())
+	t.check("Gloomguard 4-piece gives kill-heal", float(gp.derived()["kill_heal"]) > 0.0)
+	var cp := VCProfile.new_game()
+	t.check("BESTFRIENDS code grants the friendship set", bool(VCCodes.redeem("best friends", cp)["ok"]) and cp.inventory.size() >= 4)
+	var sane := true
+	for it in cp.inventory:
+		if VCSets.set_of(VCItems.sanitize(it)) != "friendship":
+			sane = false
+	t.check("code pieces keep their set after sanitize", sane)
+	# in-world
+	var m: VCMission = await GP._launch(t, "crypt", 21)
+	t.check("crypt builds for set tests", m.build_done)
+	var tiers: Array = []
+	m.player.armor_fx.tier_changed.connect(func(sid: String, n: int): tiers.append([sid, n]))
+	VC.profile.equipment.clear()
+	for key in slots:
+		VC.profile.equipment[int(slots[key])] = VCSets.make_piece(rng, "gloomguard", 6, VCDefs.Rarity.EPIC, int(slots[key]), VC.profile.alloc_uid())
+	m._on_inventory_changed("equip")
+	await GP._frames(t, 20)
+	t.check("equipping a full set raises the tier signal", tiers.size() >= 1 and int(tiers[tiers.size() - 1][1]) == 4, str(tiers))
+	t.check("4-piece set builds an aura", m.player.armor_fx.has_aura())
+	for sid in VCSets.DEFS:
+		VC.profile.equipment.clear()
+		for key in slots:
+			VC.profile.equipment[int(slots[key])] = VCSets.make_piece(rng, sid, 6, VCDefs.Rarity.EPIC, int(slots[key]), VC.profile.alloc_uid())
+		m.player.refresh_stats(false)
+		m.player.refresh_visuals()
+		await GP._frames(t, 15)
+		t.check("%s gear + aura build and animate" % sid, m.player.armor_fx.has_aura() and m.player.is_alive())
+	# friendship sword visuals
+	VC.profile.equipment.clear()
+	VCCodes.redeem("IBRAHIMXMAAZ", VC.profile)
+	for it in VC.profile.inventory:
+		if String(it["base"]) == "infinity_edge":
+			VC.profile.equip_from_inventory(VC.profile.inventory.find(it))
+			break
+	m.player.refresh_stats(false)
+	m.player.refresh_visuals()
+	await GP._frames(t, 20)
+	t.check("Power of Friendship sword has its glow", m.player.is_friend_sword() and m.player._fs_orbs.size() == 3)
+	# kill heal
+	VC.profile.equipment.clear()
+	for key in slots:
+		VC.profile.equipment[int(slots[key])] = VCSets.make_piece(rng, "gloomguard", 6, VCDefs.Rarity.EPIC, int(slots[key]), VC.profile.alloc_uid())
+	m.player.refresh_stats(false)
+	m.player.refresh_visuals()
+	m.player.god_mode = true
+	m.player.hp = 10.0
+	var c: Vector2i = m.data.rooms[0]["center"]
+	var husk := m.spawn_enemy_at("husk", m.data.tile_to_world(c + Vector2i(3, 3)), 0, 3)
+	await GP._frames(t, 10)
+	husk.invulnerable = false
+	husk.take_hit(99999.0, husk.global_position, false, 0.0, m.player)
+	await GP._frames(t, 10)
+	t.check("Gloomguard kill-heal restores health", m.player.hp > 10.0, str(m.player.hp))
+	# dodge shockwave
+	VC.profile.equipment.clear()
+	for key in slots:
+		VC.profile.equipment[int(slots[key])] = VCSets.make_piece(rng, "frostwarden", 6, VCDefs.Rarity.EPIC, int(slots[key]), VC.profile.alloc_uid())
+	m.player.refresh_stats(false)
+	m.player.refresh_visuals()
+	var foe := m.spawn_enemy_at("husk", m.player.global_position + Vector3(1.6, 0, 0), 0, 3)
+	await GP._frames(t, 30)
+	foe.invulnerable = false
+	var hp0: float = foe.hp
+	m.player._dodge_wave()
+	t.check("Frostwarden dodge shockwave hurts nearby foes", not is_instance_valid(foe) or foe.hp < hp0 or not foe.is_alive())
+	# cinematics
+	m._on_set_tier("friendship", 4)
+	m._on_set_tier("emberlord", 2)
+	m._victory_fx()
+	await GP._frames(t, 40)
+	t.check("set-bonus + victory fx run clean", m.player.is_alive())
+	m.hud.letterbox(false)
+	m._cutscene = 0.0
+	m._boss_death_cinematic(m.player.global_position + Vector3(0, 0, -6))
+	await GP._frames(t, 20)
+	t.check("boss death slow-mo engages", Engine.time_scale < 1.0 and m._cutscene > 0.0)
+	await GP._frames(t, 700)
+	t.check("time scale and camera restored afterwards", is_equal_approx(Engine.time_scale, 1.0) and m._cutscene <= 0.0)
+	m.queue_free()
+	await t.get_tree().process_frame
+	Engine.time_scale = 1.0
+	t.check("leaving a mission restores time scale", is_equal_approx(Engine.time_scale, 1.0))
+	VC.new_game()

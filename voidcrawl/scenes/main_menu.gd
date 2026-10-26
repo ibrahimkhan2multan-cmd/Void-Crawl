@@ -218,7 +218,7 @@ func _build_ui() -> void:
 	var cb2 := VCUI.button("CODES", Vector2(185, 52), 21)
 	cb2.pressed.connect(_on_button.bind("codes"))
 	row2.add_child(cb2)
-	var ver := VCUI.label("VOIDCRAWL v%s  -  Infinity Studios" % String(ProjectSettings.get_setting("application/config/version", "0.1.0")), 16, Color(0.5, 0.45, 0.65))
+	var ver := VCUI.label("%s v%s  -  Infinity Studios" % [VCDefs.GAME_NAME, String(ProjectSettings.get_setting("application/config/version", "0.1.0"))], 16, Color(0.5, 0.45, 0.65))
 	ver.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	_root.add_child(ver)
 	ver.grow_horizontal = Control.GROW_DIRECTION_BEGIN

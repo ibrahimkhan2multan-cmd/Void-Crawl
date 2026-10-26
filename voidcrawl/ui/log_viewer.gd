@@ -41,7 +41,7 @@ static func make() -> Control:
 	var share := VCUI.button("SHARE (EMAIL)", Vector2(260, 54), 22)
 	share.pressed.connect(func():
 		var body := txt.left(1800)
-		OS.shell_open("mailto:?subject=" + "VOIDCRAWL crash report".uri_encode() + "&body=" + body.uri_encode()))
+		OS.shell_open("mailto:?subject=" + "VOIDBORN crash report".uri_encode() + "&body=" + body.uri_encode()))
 	row.add_child(share)
 	var back := VCUI.button("CLOSE", Vector2(200, 54), 22)
 	back.pressed.connect(layer.queue_free)

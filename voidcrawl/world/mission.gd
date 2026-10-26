@@ -242,7 +242,11 @@ func _after_player_setup(q: Dictionary) -> void:
 		bn = "DELVE  -  FLOOR %d" % floor_n
 	hud.banner(bn, String(mission["biome"]), VCDefs.COL_VIOLET, 3.2)
 	_save_run()
+	if player.armor_fx != null:
+		player.armor_fx.tier_changed.connect(_on_set_tier)
 	ready_to_play.emit()
+	if not fast_build and not resumed and mission_id != "tutorial":
+		_play_intro()
 
 func _decode_explored(b64: String) -> PackedByteArray:
 	if b64 == "":
@@ -514,6 +518,9 @@ func _physics_process(delta: float) -> void:
 		_cutscene -= delta
 		if _cutscene <= 0.0:
 			cam_rig.release_focus()
+			cam_rig.cinematic_zoom(1.0, 2.0)
+			cam_rig.tilt(0.0)
+			hud.letterbox(false)
 	if overlay_open == "":
 		if VCInput.take("pause"):
 			open_overlay("pause")
@@ -632,6 +639,10 @@ func _on_enemy_killed(e: VCEnemy) -> void:
 	enemies.erase(e)
 	counters["kills"] += 1
 	VC.profile.stats["kills"] = int(VC.profile.stats["kills"]) + 1
+	var kh: float = float(player.stats.get("kill_heal", 0.0))
+	if kh > 0.0 and player.is_alive():
+		player.heal(float(player.max_hp) * kh / 100.0, true)
+		fx.number(player.global_position + Vector3(0, 1.6, 0), "+%d" % int(float(player.max_hp) * kh / 100.0), Color(0.5, 1.0, 0.6), false)
 	if not e.no_drops:
 		_grant_enemy_rewards(e)
 	if e.is_boss:
@@ -682,6 +693,15 @@ func _grant_enemy_rewards(e: VCEnemy) -> void:
 			elif String(d["ai"]) == "slam":
 				rarity = maxi(VCDefs.Rarity.UNCOMMON, VCItems.roll_rarity(_loot_rng, 0.3))
 			var it := VCItems.generate(_loot_rng, e.level + (1 if e.is_boss else 0), rarity, -1, 0.0, VC.profile.alloc_uid())
+			var sid := _mission_set()
+			if sid != "":
+				var set_roll := 0.28 if int(it["rarity"]) >= VCDefs.Rarity.RARE else 0.0
+				if e.is_boss and k < 2:
+					set_roll = 1.0
+				if set_roll > 0.0 and _loot_rng.randf() < set_roll:
+					var piece := VCSets.make_piece(_loot_rng, sid, e.level + (1 if e.is_boss else 0), maxi(int(it["rarity"]), VCDefs.Rarity.RARE), -1, VC.profile.alloc_uid())
+					if not piece.is_empty():
+						it = piece
 			_drop_item(pos, it)
 	if _loot_rng.randf() < float(d["potion_chance"]) * 1.6:
 		_drop_potion(pos)
@@ -690,6 +710,15 @@ func _grant_enemy_rewards(e: VCEnemy) -> void:
 	var hurt := 1.0 - player.hp / float(player.max_hp)
 	if _loot_rng.randf() < 0.14 + 0.45 * hurt:
 		_drop_heart(pos)
+
+## Armour set that drops in this dungeon ("" = none).
+func _mission_set() -> String:
+	for sid in VCSets.DEFS:
+		if String(VCSets.DEFS[sid]["mission"]) == mission_id:
+			return String(sid)
+	if mission_id == "delve":
+		return "voidwalker"
+	return ""
 
 func _grant_xp(amount: int, pos: Vector3) -> void:
 	if amount <= 0:
@@ -704,6 +733,9 @@ func _grant_xp(amount: int, pos: Vector3) -> void:
 		play_sfx("levelup")
 		fx.ring(player.global_position, 4.0, Color(1.0, 0.85, 0.4), 0.7)
 		fx.burst(player.global_position + Vector3(0, 1, 0), Color(1.0, 0.85, 0.4), 24, 6.0, 1.2)
+		fx.spawn_pillar(player.global_position, 1.1, Color(1.0, 0.85, 0.4), 1.6, 1.0)
+		hud.screen_flash(Color(1.0, 0.9, 0.5), 0.28)
+		player.play_pose("levelup", 1.2)
 		hud.banner("LEVEL UP", "Level %d  -  %d points to spend (open HERO)" % [VC.profile.level, VC.profile.attr_points], VCDefs.COL_COIN, 3.0)
 		_save_run()
 
@@ -876,7 +908,11 @@ func _start_boss(rid: int) -> void:
 	camera_shake(0.7)
 	VC.play_music("boss")
 	cam_rig.focus_on(data.tile_to_world(c + Vector2i(0, -3)))
-	_cutscene = 2.4
+	cam_rig.cinematic_zoom(0.78, 1.6)
+	hud.letterbox(true)
+	hud.screen_flash((bdef.get("glow", Color(1.0, 0.7, 1.0)) as Color), 0.3)
+	fx.spawn_pillar(data.tile_to_world(c + Vector2i(0, -5)), 1.4, (bdef.get("glow", Color(1.0, 0.7, 1.0)) as Color), 2.2, 1.6)
+	_cutscene = 2.6
 	_update_objectives()
 	_save_run()
 
@@ -892,17 +928,99 @@ func _on_boss_phase(phase: int) -> void:
 	else:
 		hud.banner("PHASE III", "The Warden's fury awakens", Color(1.0, 0.45, 0.6), 2.4)
 
-func _on_boss_killed(_e: VCEnemy) -> void:
+func _on_boss_killed(e: VCEnemy) -> void:
 	boss_state = "dead"
 	counters["boss"] = 1
 	VC.profile.stats["bosses"] = int(VC.profile.stats["bosses"]) + 1
 	hud.hide_boss()
-	hud.banner("THE WARDEN FALLS", "The Void Gate stirs...", VCDefs.COL_COIN, 3.5)
+	var bt := _boss_type()
+	var bname := String(VCEnemyDefs.get_def(bt)["name"]).to_upper() if bt != "warden" else String(mission.get("boss_title", "THE HOLLOW WARDEN")).to_upper()
+	hud.banner("%s FALLS" % bname, "The Void Gate stirs...", VCDefs.COL_COIN, 3.5)
 	_set_barriers(boss.room, false)
 	VC.play_music("dungeon")
 	play_sfx("victory")
 	_check_gate_unlock()
 	_save_run()
+	if is_instance_valid(e) and not fast_build:
+		_boss_death_cinematic(e.global_position)
+
+## Slow-motion death blow: camera locks on, bursts of light, then time resumes.
+func _boss_death_cinematic(at: Vector3) -> void:
+	_cutscene = 99.0
+	hud.letterbox(true)
+	cam_rig.focus_on(at)
+	cam_rig.cinematic_zoom(0.62, 2.5)
+	cam_rig.tilt(0.05)
+	Engine.time_scale = 0.3
+	hud.screen_flash(Color(1.0, 0.95, 0.8), 0.7)
+	camera_shake(0.9)
+	var col := Color(1.0, 0.8, 0.5)
+	fx.ring(at, 6.0, col, 0.9)
+	fx.spawn_pillar(at, 1.6, col, 2.4, 2.0)
+	for i in 4:
+		fx.burst(at + Vector3(randf_range(-1.2, 1.2), randf_range(0.4, 2.0), randf_range(-1.2, 1.2)), col, 20, 7.0, 1.4)
+	await get_tree().create_timer(1.1, true, false, true).timeout
+	Engine.time_scale = 1.0
+	if not is_inside_tree() or finished:
+		return
+	fx.ring(at, 9.0, Color(1.0, 1.0, 1.0), 0.8)
+	hud.screen_flash(Color.WHITE, 0.4)
+	await get_tree().create_timer(0.9, true, false, true).timeout
+	if not is_inside_tree():
+		return
+	_cutscene = 0.0
+	cam_rig.release_focus()
+	cam_rig.cinematic_zoom(1.0, 2.0)
+	cam_rig.tilt(0.0)
+	hud.letterbox(false)
+
+## Opening shot: the hero materialises, the camera swings to the Void Gate, then returns.
+func _play_intro() -> void:
+	if gate == null or not is_instance_valid(gate):
+		return
+	_cutscene = 99.0
+	hud.letterbox(true)
+	cam_rig.cinematic_zoom(0.7, 1.4)
+	var pp := player.global_position
+	fx.ring(pp, 3.5, VCDefs.COL_VIOLET, 0.9)
+	fx.spawn_pillar(pp, 1.3, Color(0.7, 0.45, 1.0), 1.6, 1.2)
+	fx.burst(pp + Vector3(0, 1.0, 0), Color(0.75, 0.5, 1.0), 24, 5.0, 1.2)
+	play_sfx("levelup", -6.0, 0.8)
+	await get_tree().create_timer(1.2, true, false, true).timeout
+	if not is_inside_tree() or finished:
+		return
+	cam_rig.focus_on(gate.global_position)
+	cam_rig.cinematic_zoom(1.0, 1.2)
+	hud.toast("Find the Void Gate", Color(0.85, 0.75, 1.0), 2.5)
+	await get_tree().create_timer(1.7, true, false, true).timeout
+	if not is_inside_tree():
+		return
+	_cutscene = 0.0
+	cam_rig.release_focus()
+	cam_rig.cinematic_zoom(1.0, 2.0)
+	hud.letterbox(false)
+
+## A 2-/4-piece set bonus just turned on (or the hero just equipped into it).
+func _on_set_tier(set_id: String, count: int) -> void:
+	if not VCSets.DEFS.has(set_id) or hud == null:
+		return
+	var d: Dictionary = VCSets.DEFS[set_id]
+	var col: Color = d["glow"]
+	var pp := player.global_position
+	fx.ring(pp, 2.4 if count < 4 else 4.2, col, 0.7)
+	fx.spawn_pillar(pp, 1.0 if count < 4 else 1.5, col, 1.4 if count < 4 else 2.2, 0.9)
+	fx.burst(pp + Vector3(0, 1.0, 0), col, 16 if count < 4 else 34, 6.0, 1.2)
+	play_sfx("levelup", -4.0, 1.2 if count >= 4 else 1.0)
+	player.play_pose("equip", 0.8)
+	if count >= 4:
+		hud.screen_flash(col, 0.3)
+		cam_rig.cinematic_zoom(0.85, 4.0)
+		get_tree().create_timer(0.7, true, false, true).timeout.connect(func():
+			if is_instance_valid(cam_rig) and _cutscene <= 0.0:
+				cam_rig.cinematic_zoom(1.0, 2.0))
+		hud.banner(String(d["name"]).to_upper(), "FULL SET  -  %s" % String(d["t4"]), col, 3.4)
+	else:
+		hud.banner(String(d["name"]).to_upper(), "SET BONUS (2)  -  %s" % String(d["t2"]), col, 2.6)
 
 # ---------------------------------------------------------------- interaction
 func _tick_interaction() -> void:
@@ -1118,13 +1236,14 @@ func _complete_mission() -> void:
 	gained_coins += coins
 	player.god_mode = true
 	play_sfx("victory")
+	_victory_fx()
 	VC.run = {"finished": true}
 	run = VC.run
 	VC.save_now()
 	touch.release_all()
 	touch.visible = false
 	mission_completed.emit()
-	await get_tree().create_timer(0.8, false).timeout
+	await get_tree().create_timer(0.8 if fast_build else 2.6, false).timeout
 	var lines: Array = [
 		["Time", "%dm %02ds" % [int(elapsed) / 60, int(elapsed) % 60]],
 		["Enemies defeated", str(counters["kills"])],
@@ -1144,6 +1263,19 @@ func _complete_mission() -> void:
 		buttons.append(["NEXT: %s" % String(VCMissions.get_mission(next_id)["name"]).to_upper(), func(): VC.start_mission(next_id)])
 	buttons.append(["RETURN TO MENU", func(): VC.goto_menu()])
 	_show_result("MISSION COMPLETE", VCDefs.COL_COIN, String(mission["name"]), lines, buttons)
+
+func _victory_fx() -> void:
+	var pp := player.global_position
+	player.play_pose("victory", 3.0)
+	hud.letterbox(true)
+	hud.screen_flash(Color(1.0, 0.9, 0.6), 0.35)
+	cam_rig.cinematic_zoom(0.7, 1.5)
+	fx.ring(pp, 5.0, VCDefs.COL_COIN, 0.9)
+	fx.spawn_pillar(pp, 1.8, VCDefs.COL_COIN, 2.2, 1.4)
+	var cols := [Color(1.0, 0.8, 0.4), Color(0.5, 0.95, 1.0), Color(1.0, 0.5, 0.85), Color(0.7, 0.5, 1.0)]
+	for i in 6:
+		var a := TAU * float(i) / 6.0
+		fx.burst(pp + Vector3(cos(a) * 2.0, 1.4 + 0.4 * float(i % 2), sin(a) * 2.0), cols[i % cols.size()], 18, 6.0, 1.3)
 
 func _next_mission() -> String:
 	var order: Array = VCMissions.ORDER
@@ -1171,7 +1303,15 @@ func _on_player_died() -> void:
 	touch.release_all()
 	hud.banner("YOU FELL", "", VCDefs.COL_BAD, 2.0)
 	player_defeated.emit()
-	await get_tree().create_timer(1.6, false).timeout
+	if not fast_build:
+		Engine.time_scale = 0.35
+		hud.screen_flash(Color(0.9, 0.1, 0.2), 0.45)
+		cam_rig.cinematic_zoom(0.72, 2.0)
+		await get_tree().create_timer(0.9, true, false, true).timeout
+		Engine.time_scale = 1.0
+		if is_inside_tree():
+			cam_rig.cinematic_zoom(1.0, 2.0)
+	await get_tree().create_timer(1.0 if not fast_build else 1.6, false).timeout
 	if finished or _defeat_shown:
 		return
 	_defeat_shown = true
@@ -1180,6 +1320,10 @@ func _on_player_died() -> void:
 
 func retry() -> void:
 	_defeat_shown = false
+	Engine.time_scale = 1.0
+	_cutscene = 0.0
+	hud.letterbox(false)
+	cam_rig.cinematic_zoom(1.0, 3.0)
 	_close_overlay_node()
 	# reset any fight in progress
 	for key in rooms_state:
@@ -1302,6 +1446,9 @@ func _save_run() -> void:
 	VC.run = run_d
 	if VC.autosave:
 		VC.save_now()
+
+func _exit_tree() -> void:
+	Engine.time_scale = 1.0
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not build_done:

@@ -15,7 +15,7 @@ func _draw() -> void:
 	var cx := s.x * 0.5
 	var f := ThemeDB.fallback_font
 	var fs := int(minf(s.y * 0.52, s.x * 0.11))
-	var title := "VOIDCRAWL"
+	var title := VCDefs.GAME_NAME
 	var tw := f.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var pos := Vector2(cx - tw * 0.5, s.y * 0.66)
 	var glow := 0.55 + 0.15 * sin(pulse * 2.0)

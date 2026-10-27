@@ -185,6 +185,7 @@ func _build_detail(dv: VBoxContainer) -> void:
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.custom_minimum_size = Vector2(0, 120)
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
 	dv.add_child(scroll)
 	var info := VCUI.vbox(6)
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL

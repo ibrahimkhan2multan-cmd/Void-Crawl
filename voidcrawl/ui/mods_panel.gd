@@ -32,11 +32,14 @@ func _ready() -> void:
 	hint.custom_minimum_size = Vector2(680, 0)
 	v.add_child(hint)
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, 260)
+	var vh := get_viewport_rect().size.y if is_inside_tree() else 720.0
+	scroll.custom_minimum_size = Vector2(0, clampf(vh - 400.0, 150.0, 380.0))
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_ALWAYS
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	v.add_child(scroll)
 	_list = VCUI.vbox(8)
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_list.mouse_filter = Control.MOUSE_FILTER_PASS
 	scroll.add_child(_list)
 	var row := VCUI.hbox(10)
 	v.add_child(row)
@@ -69,6 +72,7 @@ func _card(m: Dictionary) -> Control:
 	var ok := bool(m["ok"])
 	var on := bool(m["enabled"])
 	var pc := VCUI.panel(Color(0.04, 0.02, 0.08, 0.95), Color(0.3, 0.16, 0.5) if ok else Color(0.7, 0.2, 0.25))
+	pc.mouse_filter = Control.MOUSE_FILTER_PASS    # so a finger drag on a card still scrolls the list
 	var v := VCUI.vbox(4)
 	pc.add_child(v)
 	var title := "%s  v%s" % [String(m["name"]), String(m["version"])]

@@ -19,6 +19,7 @@ var equipment: Dictionary = {}       # slot(int) -> item Dictionary
 var completed: Array = []            # mission ids
 var stats: Dictionary = {"kills": 0, "deaths": 0, "chests": 0, "bosses": 0, "playtime": 0.0, "items_found": 0}
 var next_uid: int = 1
+var mod_stash: Array = []            # items whose mod is off/missing; restored when it returns
 var redeemed: Array = []             # promo codes already used (normalised)
 
 static func new_game() -> VCProfile:
@@ -150,6 +151,36 @@ static func dps_of(d: Dictionary) -> float:
 	var avg := (float(d["dmg_min"]) + float(d["dmg_max"])) * 0.5
 	return avg * float(d["dmg_mult"]) * (1.0 + float(d["crit"]) * 0.75) / maxf(float(d["interval"]), 0.1)
 
+## After the mod list changed: park items whose base vanished, bring back stashed ones that exist again.
+## Returns {"parked": n, "restored": n}.
+func reconcile_mod_items() -> Dictionary:
+	var parked := 0
+	var restored := 0
+	var keep: Array = []
+	for it in inventory:
+		if VCItems.BASES.has(String(it.get("base", ""))):
+			keep.append(it)
+		elif mod_stash.size() < 300:
+			mod_stash.append(it)
+			parked += 1
+	inventory = keep
+	for slot in equipment.keys():
+		if not VCItems.BASES.has(String(equipment[slot].get("base", ""))):
+			if mod_stash.size() < 300:
+				mod_stash.append(equipment[slot])
+			equipment.erase(slot)
+			parked += 1
+	var left: Array = []
+	for raw in mod_stash:
+		var clean := VCItems.sanitize(raw)
+		if clean.is_empty() or inventory.size() >= INV_CAP:
+			left.append(raw)
+		else:
+			inventory.append(clean)
+			restored += 1
+	mod_stash = left
+	return {"parked": parked, "restored": restored}
+
 func to_dict() -> Dictionary:
 	var eq := {}
 	for slot in equipment:
@@ -158,7 +189,7 @@ func to_dict() -> Dictionary:
 		"level": level, "xp": xp, "attr_points": attr_points, "attrs": attrs.duplicate(),
 		"coins": coins, "potions": potions, "bombs": bombs, "inventory": inventory.duplicate(true),
 		"equipment": eq, "completed": completed.duplicate(), "stats": stats.duplicate(),
-		"next_uid": next_uid, "redeemed": redeemed.duplicate(),
+		"next_uid": next_uid, "redeemed": redeemed.duplicate(), "mod_stash": mod_stash.duplicate(true),
 	}
 
 static func from_dict(d: Dictionary) -> VCProfile:
@@ -177,18 +208,25 @@ static func from_dict(d: Dictionary) -> VCProfile:
 			var it := VCItems.sanitize(raw)
 			if not it.is_empty():
 				p.inventory.append(it)
+			elif raw.has("base") and p.mod_stash.size() < 300:
+				p.mod_stash.append(raw)
 	var eq: Dictionary = d.get("equipment", {})
 	for k in eq:
 		if eq[k] is Dictionary:
 			var it2 := VCItems.sanitize(eq[k])
 			if not it2.is_empty():
 				p.equipment[int(it2["slot"])] = it2
+			elif eq[k].has("base") and p.mod_stash.size() < 300:
+				p.mod_stash.append(eq[k])
 	for m in d.get("completed", []):
 		p.completed.append(String(m))
 	var st: Dictionary = d.get("stats", {})
 	for k in p.stats:
 		if st.has(k):
 			p.stats[k] = st[k] if k == "playtime" else int(st[k])
+	for st_raw in d.get("mod_stash", []):
+		if st_raw is Dictionary and st_raw.has("base") and p.mod_stash.size() < 300:
+			p.mod_stash.append(st_raw)
 	for rc in d.get("redeemed", []):
 		p.redeemed.append(String(rc))
 	p.next_uid = maxi(int(d.get("next_uid", 1)), 1)

@@ -37,6 +37,7 @@ func _ready() -> void:
 	VCCrashGuard.on_start()
 	_register_input()
 	_setup_audio()
+	VCMods.load_all()
 	var loaded := VCSave.load_save()
 	if loaded.is_empty():
 		profile = VCProfile.new_game()

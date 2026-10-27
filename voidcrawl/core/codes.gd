@@ -7,7 +7,7 @@ const MAAZ_LORE := "The power of IBRAHIM and Maaz friendship."
 
 ## id -> {"msg": toast, "coins": n, "xp": n, "points": n, "potions": n, "bombs": n, "items": [spec...]}
 ## item spec: {"base": id, "rarity": r, "ilvl": n}  or  {"custom": "maaz"}
-const DEFS := {
+static var DEFS := {
 	"IBRAHIMXMAAZ": {"msg": "Easter egg unlocked: The Power of Friendship!", "coins": 250, "items": [{"custom": "maaz"}]},
 	"VOIDCRAWL": {"msg": "Welcome to the Void, crawler.", "coins": 300},
 	"VOIDBORN": {"msg": "Born of the Void.", "coins": 350},
@@ -56,6 +56,8 @@ static func redeem(raw: String, p: VCProfile) -> Dictionary:
 		return {"ok": false, "msg": "Backpack too full - free up %d slot(s) first." % specs.size()}
 	var got: Array = []
 	for spec in specs:
+		if not spec.has("custom") and not VCItems.BASES.has(String(spec.get("base", ""))):
+			continue
 		var it := _make_item(spec, p)
 		if not it.is_empty() and p.add_item(it):
 			got.append(String(it["name"]))

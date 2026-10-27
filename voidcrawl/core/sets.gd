@@ -5,7 +5,7 @@ extends RefCounted
 
 const SLOT_KEYS := {1: "helm", 2: "armor", 4: "boots", 3: "trinket"}
 
-const DEFS := {
+static var DEFS := {
 	"gloomguard": {
 		"name": "Gloomguard Plate", "mission": "crypt",
 		"color": Color(0.5, 0.52, 0.72), "glow": Color(0.7, 0.45, 1.0),

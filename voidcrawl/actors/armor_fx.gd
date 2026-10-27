@@ -124,6 +124,11 @@ func _build_helm(sid: String) -> void:
 				var w := _b(_gear, Vector3(0.5, 0.1, 0.22), Vector3(sx * 0.42, 1.98, 0.02), Color(0.95, 0.8, 0.4) if sx < 0 else Color(0.45, 0.85, 0.95), 0.5, Vector3(0, 0, sx * 0.5))
 				_pulse_parts.append(w)
 			_b(_gear, Vector3(0.12, 0.12, 0.08), Vector3(0, 1.95, -0.28), Color(1.0, 0.45, 0.75), 2.6, Vector3(0, 0, PI * 0.25))
+		_:
+			# mod-made sets get a generic crested helm in their colours
+			_b(_gear, Vector3(0.56, 0.26, 0.56), Vector3(0, 1.8, 0.02), c)
+			_b(_gear, Vector3(0.12, 0.3, 0.46), Vector3(0, 2.04, 0.02), g, 1.4)
+			_b(_gear, Vector3(0.3, 0.08, 0.04), Vector3(0, 1.64, -0.27), g, 2.4)
 
 func _build_armor(sid: String) -> void:
 	var c := _col(sid)

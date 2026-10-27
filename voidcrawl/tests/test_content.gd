@@ -15,6 +15,7 @@ static func run(t: Node) -> void:
 	await _frost(t)
 	await _sets(t)
 	await _polish(t)
+	await _mods(t)
 	await safe_mode(t)
 
 static func _items(t: Node) -> void:
@@ -554,3 +555,87 @@ static func _polish(t: Node) -> void:
 	t.check("item detail scrolls and EQUIP button is present", scrolls.size() >= 2 and has_equip)
 	inv.queue_free()
 	VC.new_game()
+
+static func _mods(t: Node) -> void:
+	t.section("content: mods (zip import)")
+	VCMods.remove("sunfire")
+	var base_items := VCItems.BASES.size()
+	var base_sets := VCSets.DEFS.size()
+	var base_codes := VCCodes.DEFS.size()
+	var r := VCMods.install_example()
+	t.check("example mod installs", bool(r["ok"]), String(r["msg"]))
+	t.check("mod items/sets/codes join the game", VCItems.BASES.size() == base_items + 6 and VCSets.DEFS.size() == base_sets + 1 and VCCodes.DEFS.size() == base_codes + 2)
+	t.check("mod list reports it enabled", VCMods.list.size() >= 1 and bool(VCMods.list[0]["enabled"]))
+	var drops := false
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	for i in 600:
+		if String(VCItems.generate(rng, 3, -1, -1, 0.0, i)["base"]) == "sunfire__sunfire_blade":
+			drops = true
+	t.check("mod weapon rolls in random loot", drops)
+	var leak := false
+	for i in 600:
+		if VCSets.set_of(VCItems.generate(rng, 3, -1, -1, 0.0, i)) != "":
+			leak = true
+	t.check("mod set pieces never roll randomly", not leak)
+	VC.new_game()
+	var p: VCProfile = VC.profile
+	t.check("mod code SUNBORN grants the set", bool(VCCodes.redeem("sunborn", p)["ok"]) and p.inventory.size() >= 4)
+	for it in p.inventory.duplicate():
+		p.equip_from_inventory(p.inventory.find(it))
+	var sid := "sunfire__sunborn"
+	t.check("mod set counts 4 pieces and gives its bonus", int(VCSets.counts(p.equipment).get(sid, 0)) == 4 and float(p.derived()["kill_heal"]) > 0.0)
+	# round trip through save with mod loaded
+	var rt := VCProfile.from_dict(JSON.parse_string(JSON.stringify(p.to_dict())))
+	t.check("mod gear survives save/load", int(VCSets.counts(rt.equipment).get(sid, 0)) == 4)
+	# disable: items parked, nothing crashes
+	var m: VCMission = await GP._launch(t, "forge", 31)
+	VC.profile = p
+	var off := VCMods.set_enabled("sunfire", false)
+	t.check("disabling parks the mod's items", int(off["parked"]) >= 4 and VCSets.counts(p.equipment).is_empty() and VCItems.BASES.size() == base_items, "%s eq=%d bases=%d/%d" % [str(off), p.equipment.size(), VCItems.BASES.size(), base_items])
+	var stats_ok: bool = p.derived().has("max_hp")
+	t.check("game stats still compute with the mod off", stats_ok)
+	var rt2 := VCProfile.from_dict(JSON.parse_string(JSON.stringify(p.to_dict())))
+	t.check("parked items persist in the save", rt2.mod_stash.size() >= 4)
+	var on := VCMods.set_enabled("sunfire", true)
+	t.check("re-enabling returns the items", int(on["restored"]) >= 4 and VCItems.BASES.size() == base_items + 6)
+	m.queue_free()
+	await t.get_tree().process_frame
+	VC.new_game()
+	# bad packs are rejected, not crashed on
+	var zp := ZIPPacker.new()
+	zp.open("user://bad.zip")
+	zp.start_file("mod.json")
+	zp.write_file("{ not json".to_utf8_buffer())
+	zp.close_file()
+	zp.close()
+	var bad := VCMods.install_bytes(FileAccess.get_file_as_bytes("user://bad.zip"))
+	t.check("broken mod.json is rejected cleanly", not bool(bad["ok"]))
+	t.check("garbage bytes are rejected", not bool(VCMods.install_bytes(PackedByteArray([1, 2, 3, 4, 5]))["ok"]))
+	# a pack with one good item and one wild one: wild stats are clamped, bad entries skipped
+	var zp2 := ZIPPacker.new()
+	zp2.open("user://wild.zip")
+	zp2.start_file("wildpack/mod.json")
+	zp2.write_file(JSON.stringify({"id": "wild", "name": "Wild", "items": {
+		"god": {"name": "God Sword", "slot": "weapon", "kind": "sword", "dmg": [99999, 999999], "interval": 0.0, "hp": 99999, "speed": 500},
+		"junk": {"name": "Bad", "slot": "nope"}}}).to_utf8_buffer())
+	zp2.close_file()
+	zp2.close()
+	var wild := VCMods.install_bytes(FileAccess.get_file_as_bytes("user://wild.zip"))
+	t.check("wild pack installs (nested folder ok) with bad entries skipped", bool(wild["ok"]) and VCItems.BASES.has("wild__god") and not VCItems.BASES.has("wild__junk"), String(wild["msg"]))
+	if VCItems.BASES.has("wild__god"):
+		var gb: Dictionary = VCItems.BASES["wild__god"]
+		t.check("extreme stats are clamped", int(gb["dmg"][1]) <= 300 and float(gb["interval"]) >= 0.15 and int(gb.get("speed", 0)) <= 60)
+	VCMods.remove("wild")
+	VCMods.remove("sunfire")
+	t.check("removing mods restores the base game", VCItems.BASES.size() == base_items and VCSets.DEFS.size() == base_sets and VCCodes.DEFS.size() == base_codes)
+	# panel
+	VCMods.install_example()
+	var mp := VCModsPanel.new()
+	t.add_child(mp)
+	await t.get_tree().process_frame
+	t.check("mods panel lists installed mods", mp._list.get_child_count() >= 1)
+	mp.queue_free()
+	VCMods.remove("sunfire")
+	DirAccess.remove_absolute("user://bad.zip")
+	DirAccess.remove_absolute("user://wild.zip")

@@ -212,12 +212,15 @@ func _build_ui() -> void:
 			_play_btn = b
 	var row2 := VCUI.hbox(10)
 	col.add_child(row2)
-	var hb := VCUI.button("HOW TO PLAY", Vector2(185, 52), 21)
+	var hb := VCUI.button("HOW TO PLAY", Vector2(130, 52), 17)
 	hb.pressed.connect(_on_button.bind("howto"))
 	row2.add_child(hb)
-	var cb2 := VCUI.button("CODES", Vector2(185, 52), 21)
+	var cb2 := VCUI.button("CODES", Vector2(110, 52), 17)
 	cb2.pressed.connect(_on_button.bind("codes"))
 	row2.add_child(cb2)
+	var mb := VCUI.button("MODS", Vector2(120, 52), 17)
+	mb.pressed.connect(_on_button.bind("mods"))
+	row2.add_child(mb)
 	var ver := VCUI.label("%s v%s  -  Infinity Studios" % [VCDefs.GAME_NAME, String(ProjectSettings.get_setting("application/config/version", "0.1.0"))], 16, Color(0.5, 0.45, 0.65))
 	ver.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	_root.add_child(ver)
@@ -309,6 +312,10 @@ func _on_button(id: String) -> void:
 			var cp := VCCodesPanel.new()
 			cp.closed.connect(_close_modal)
 			_show_modal(cp)
+		"mods":
+			var mp := VCModsPanel.new()
+			mp.closed.connect(_close_modal)
+			_show_modal(mp)
 		"exit":
 			VC.save_now()
 			get_tree().quit()

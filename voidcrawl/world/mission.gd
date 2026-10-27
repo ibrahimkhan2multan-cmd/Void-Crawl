@@ -723,14 +723,18 @@ func _grant_enemy_rewards(e: VCEnemy) -> void:
 	if _loot_rng.randf() < 0.14 + 0.45 * hurt:
 		_drop_heart(pos)
 
-## Armour set that drops in this dungeon ("" = none).
+## Armour set that drops in this dungeon ("" = none). Mods may add more sets to a dungeon; one is picked per drop.
 func _mission_set() -> String:
+	var ids: Array = []
 	for sid in VCSets.DEFS:
 		if String(VCSets.DEFS[sid]["mission"]) == mission_id:
-			return String(sid)
-	if mission_id == "delve":
-		return "voidwalker"
-	return ""
+			ids.append(String(sid))
+	if ids.is_empty() and mission_id == "delve":
+		ids.append("voidwalker")
+	if ids.is_empty():
+		return ""
+	ids.sort()
+	return String(ids[_loot_rng.randi_range(0, ids.size() - 1)])
 
 func _grant_xp(amount: int, pos: Vector3) -> void:
 	if amount <= 0:

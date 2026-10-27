@@ -4,7 +4,7 @@ extends RefCounted
 ## Items are plain JSON-friendly Dictionaries so they save/load trivially.
 
 # kind: sword/axe/dagger/bow for weapons. range = reach (melee) or max distance (ranged).
-const BASES := {
+static var BASES := {
 	"ashen_blade": {"name": "Ashen Blade", "slot": 0, "kind": "sword", "dmg": [9, 12], "interval": 0.42,
 		"range": 2.7, "arc": 115.0, "ranged": false, "color": Color(0.78, 0.78, 0.9)},
 	"gloomaxe": {"name": "Gloomaxe", "slot": 0, "kind": "axe", "dmg": [17, 23], "interval": 0.74,

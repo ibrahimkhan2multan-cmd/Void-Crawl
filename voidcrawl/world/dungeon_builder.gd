@@ -20,7 +20,17 @@ const THEME_COL := {
 	"rime": [Color(0.13, 0.18, 0.32), Color(0.3, 0.42, 0.72)],
 }
 
+const MOSS := {
+	"crypt": 0.5, "cavern": 0.38, "ruins": 0.62, "overgrown": 1.0, "void": 0.0, "corridor": 0.42,
+	"ash": 0.0, "forge": 0.0, "magma": 0.0, "ice": 0.55, "glacier": 0.75, "rime": 0.5,
+}
+const FROST_THEMES := ["ice", "glacier", "rime"]
+
 var data: VCDungeonData
+var wall_prop_mat: Material            # wall-mounted dressing (fades like walls)
+var floor_prop_mat: Material
+var _wprop_chunks: Dictionary = {}
+var _fprop_chunks: Dictionary = {}
 var wall_mat: Material
 var floor_mat: Material
 var glow_mat: Material
@@ -54,6 +64,19 @@ static func _make_world_material(fade: bool) -> Material:
 	m.set_shader_parameter("fade_enabled", 1.0 if fade else 0.0)
 	return m
 
+static func _make_prop_material(fade: bool) -> Material:
+	if VCSettings.safe_mode():
+		var sm := StandardMaterial3D.new()
+		sm.vertex_color_use_as_albedo = true
+		sm.roughness = 1.0
+		sm.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+		return sm
+	var m := ShaderMaterial.new()
+	m.shader = load("res://voidcrawl/assets/shaders/prop.gdshader")
+	m.set_shader_parameter("tex", VCTex.texture("cloth"))
+	m.set_shader_parameter("fade_enabled", 1.0 if fade else 0.0)
+	return m
+
 ## Pass a `step` Callable (it should await a frame) to spread the work over many frames so a
 ## slow phone never freezes for seconds (Android reports a frozen UI as a crash / ANR).
 func build(d: VCDungeonData, quality: Dictionary, step: Callable = Callable()) -> void:
@@ -63,6 +86,12 @@ func build(d: VCDungeonData, quality: Dictionary, step: Callable = Callable()) -
 	_rng.seed = d.seed * 7919 + 13
 	wall_mat = _make_world_material(true)
 	floor_mat = _make_world_material(false)
+	wall_prop_mat = _make_prop_material(true)
+	floor_prop_mat = _make_prop_material(false)
+	if wall_mat is ShaderMaterial:
+		var pal := String(VCMissions.get_mission(d.mission_id).get("palette", ""))
+		(wall_mat as ShaderMaterial).set_shader_parameter("frost_mode", 1.0 if pal == "frost" else 0.0)
+		(floor_mat as ShaderMaterial).set_shader_parameter("frost_mode", 1.0 if pal == "frost" else 0.0)
 	if VCSettings.safe_mode():
 		var gm := StandardMaterial3D.new()
 		gm.vertex_color_use_as_albedo = true
@@ -80,11 +109,14 @@ func build(d: VCDungeonData, quality: Dictionary, step: Callable = Callable()) -
 	await _build_tiles()
 	await _build_collision()
 	await _build_decor()
+	await _build_flora()
 	await _build_lights()
 	await _build_runes()
 	await _build_secrets()
 	await _flush_chunks(_floor_chunks, floor_mat, "Floor")
 	await _flush_chunks(_wall_chunks, wall_mat, "Walls")
+	await _flush_chunks(_wprop_chunks, wall_prop_mat, "WallProps")
+	await _flush_chunks(_fprop_chunks, floor_prop_mat, "FloorProps")
 	await _flush_chunks(_glow_chunks, glow_mat, "Glow")
 
 # ------------------------------------------------------------------ batching
@@ -156,14 +188,14 @@ func _build_tiles() -> void:
 					if data.get_tile(x + dd.x, y + dd.y) == VCDungeonData.T_ROCK:
 						rock_n += 1
 				f = f * (1.0 - 0.11 * float(rock_n))
-				f.a = 1.0
+				f.a = 1.0 - float(MOSS.get(theme, 0.0)) * (0.5 if not FROST_THEMES.has(theme) else 0.3)
 				_add(_floor_chunks, wpos + Vector3(0, -0.25, 0), Vector3(T, 0.5, T), f)
 			elif t == VCDungeonData.T_ROCK:
 				if not _near_floor(x, y):
 					continue
 				var h: float = VCDefs.WALL_H * clampf(_jit(x, y, 0.12), 0.85, 1.15)
 				var w: Color = cols[1] * _jit(x + 5, y + 3, 0.14)
-				w.a = 1.0
+				w.a = 1.0 - float(MOSS.get(theme, 0.0))
 				_add(_wall_chunks, wpos + Vector3(0, h * 0.5, 0), Vector3(T, h, T), w)
 			# T_SECRET is built in _build_secrets()
 
@@ -239,6 +271,228 @@ func _build_decor() -> void:
 				_add(_glow_chunks, p + Vector3(-0.4, 0.35, -0.2), Vector3(0.28, 0.7, 0.28), cc * 1.1, Vector3(0.3, 0.9, 0.25))
 				_add(_wall_chunks, p + Vector3(0, 0.12, 0), Vector3(1.3, 0.24, 1.3), base * 0.8)
 				_decor_shape(t, Vector3(1.1, 1.4, 1.1))
+
+
+# --------------------------------------------------------------------- flora
+func _hf(x: int, y: int, salt: int) -> float:
+	var h := hash(Vector2i(x * 73856093 + salt * 4099, y * 19349663 - salt * 7919) + Vector2i(data.seed, salt))
+	return float(absi(h) % 10000) / 10000.0
+
+func _pr(c: Color) -> Color:
+	c.a = 1.0
+	return c
+
+func _reserved_tiles() -> Dictionary:
+	var r := {}
+	var pts: Array = [data.start_tile, data.exit_tile, data.marker_tile]
+	for c in data.chests:
+		pts.append(c["tile"])
+	for c in data.checkpoints:
+		pts.append(c["tile"])
+	for c in data.props:
+		pts.append(c["tile"])
+	for b in data.braziers:
+		pts.append(b["tile"])
+	for t in data.decor:
+		pts.append(t)
+	for pt in pts:
+		for dy in range(-1, 2):
+			for dx in range(-1, 2):
+				r[Vector2i(pt.x + dx, pt.y + dy)] = true
+	return r
+
+## Box mounted flat on a wall face. `dir` points from the floor tile toward the wall.
+func _wbox(fp: Vector3, dir: Vector2i, thick: float, wide: float, tall: float, y: float, lateral: float, col: Color, rot_in_plane: float = 0.0) -> void:
+	var dv := Vector3(float(dir.x), 0, float(dir.y))
+	var perp := Vector3(float(dir.y), 0, float(dir.x))
+	var size := Vector3(thick, tall, wide) if dir.x != 0 else Vector3(wide, tall, thick)
+	var pos := fp - dv * (thick * 0.5 + 0.01) + perp * lateral + Vector3(0, y, 0)
+	var rot := Vector3(rot_in_plane, 0, 0) if dir.x != 0 else Vector3(0, 0, rot_in_plane)
+	_add(_wprop_chunks, pos, size, _pr(col), rot)
+
+func _build_flora() -> void:
+	var T := VCDefs.TILE
+	var reserved := _reserved_tiles()
+	var dirs := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
+	var count := 0
+	for y in data.h:
+		if y % 5 == 0:
+			await _yield()
+		for x in data.w:
+			if data.get_tile(x, y) != VCDungeonData.T_FLOOR:
+				continue
+			var t := Vector2i(x, y)
+			if reserved.has(t):
+				continue
+			var theme := _theme_of(x, y)
+			var wp := data.tile_to_world(t)
+			var base: Color = THEME_COL[theme][1]
+			var frosty := FROST_THEMES.has(theme)
+			var hot := theme == "forge" or theme == "magma" or theme == "ash"
+			var mossy := theme in ["crypt", "cavern", "ruins", "overgrown", "corridor"]
+			var walls: Array = []
+			for d in dirs:
+				if data.get_tile(x + d.x, y + d.y) == VCDungeonData.T_ROCK:
+					walls.append(d)
+			var narrow := (walls.has(Vector2i(1, 0)) and walls.has(Vector2i(-1, 0))) or (walls.has(Vector2i(0, 1)) and walls.has(Vector2i(0, -1)))
+			var wi := 0
+			for d in walls:
+				wi += 1
+				var fp := wp + Vector3(float(d.x), 0, float(d.y)) * (T * 0.5)
+				var r1 := _hf(x, y, 10 + wi)
+				var r2 := _hf(x, y, 20 + wi)
+				var r3 := _hf(x, y, 30 + wi)
+				# vines
+				var vine_p: float = {"overgrown": 0.5, "crypt": 0.2, "ruins": 0.3, "cavern": 0.14, "corridor": 0.1}.get(theme, 0.0)
+				if r1 < vine_p:
+					var n := 2 + int(r2 * 3.0)
+					for k in n:
+						var ln := 0.8 + 1.6 * _hf(x, y, 40 + k + wi)
+						var lat := (float(k) - float(n - 1) * 0.5) * 0.38 + (_hf(x, y, 50 + k) - 0.5) * 0.2
+						var g := Color(0.1, 0.26, 0.1) * (0.8 + 0.5 * _hf(x, y, 60 + k))
+						_wbox(fp, d, 0.07, 0.09, ln, VCDefs.WALL_H - ln * 0.5 - 0.02, lat, g)
+						for lf in 2:
+							var ly := VCDefs.WALL_H - ln * (0.25 + 0.5 * _hf(x, y, 70 + k * 2 + lf))
+							_wbox(fp, d, 0.1, 0.2, 0.14, ly, lat + (_hf(x, y, 80 + k + lf) - 0.5) * 0.16, Color(0.2, 0.45, 0.14) * (0.8 + 0.4 * _hf(x, y, 90 + lf + k)))
+						count += 1
+				# banners
+				var ban_p: float = {"crypt": 0.05, "ruins": 0.07, "forge": 0.06, "corridor": 0.03}.get(theme, 0.0)
+				if r2 > 0.5 and r3 < ban_p * 2.0 and r1 >= vine_p:
+					var bc := Color(0.38, 0.12, 0.52) if theme == "crypt" or theme == "corridor" else (Color(0.16, 0.26, 0.55) if theme == "ruins" else Color(0.6, 0.13, 0.1))
+					_wbox(fp, d, 0.05, 0.72, 1.35, 1.65, 0.0, bc)
+					_wbox(fp, d, 0.08, 0.86, 0.09, 2.35, 0.0, Color(0.82, 0.66, 0.25))
+					_wbox(fp, d, 0.06, 0.3, 0.3, 1.6, 0.0, Color(0.82, 0.66, 0.25), PI * 0.25)
+					_wbox(fp, d, 0.06, 0.18, 0.18, 1.6, 0.0, bc * 1.4, PI * 0.25)
+					_wbox(fp, d, 0.05, 0.3, 0.2, 0.9, 0.0, bc, PI * 0.25)
+					count += 1
+				# icicles
+				if frosty and r1 < 0.38:
+					var ni := 3 + int(r2 * 3.0)
+					for k in ni:
+						var lat2 := (float(k) - float(ni - 1) * 0.5) * 0.3
+						var il := 0.35 + 0.5 * _hf(x, y, 100 + k + wi)
+						var ic := Color(0.8, 0.94, 1.0)
+						_wbox(fp, d, 0.14, 0.16, il * 0.5, VCDefs.WALL_H - il * 0.25, lat2, ic)
+						_wbox(fp, d, 0.1, 0.1, il * 0.5, VCDefs.WALL_H - il * 0.65, lat2, ic * 0.95)
+						_wbox(fp, d, 0.06, 0.06, il * 0.3, VCDefs.WALL_H - il * 0.95, lat2, Color(0.9, 1.0, 1.0))
+					count += 1
+				# roots
+				if theme == "overgrown" and r3 < 0.28:
+					_wbox(fp, d, 0.12, 0.12, 2.0, 1.3, 0.3, Color(0.25, 0.17, 0.11), 0.35)
+					_wbox(fp, d, 0.1, 0.1, 1.5, 1.5, -0.3, Color(0.22, 0.15, 0.1), -0.45)
+				# chains
+				if (theme == "crypt" or theme == "forge" or theme == "ruins") and r3 > 0.93:
+					_wbox(fp, d, 0.05, 0.05, 1.5, VCDefs.WALL_H - 0.75, 0.0, Color(0.2, 0.2, 0.24))
+					for k in 5:
+						_wbox(fp, d, 0.09, 0.09, 0.1, VCDefs.WALL_H - 0.2 - 0.28 * float(k), 0.0, Color(0.38, 0.38, 0.44))
+				# pipes and vents
+				if hot and r2 < 0.12:
+					_wbox(fp, d, 0.16, 1.7, 0.16, 2.0, 0.0, Color(0.2, 0.18, 0.2))
+					_wbox(fp, d, 0.2, 0.2, 0.2, 2.0, -0.6, Color(0.32, 0.28, 0.3))
+					_wbox(fp, d, 0.2, 0.2, 0.2, 2.0, 0.6, Color(0.32, 0.28, 0.3))
+					_add(_glow_chunks, fp - Vector3(float(d.x), 0, float(d.y)) * 0.1 + Vector3(0, 1.75, 0), Vector3(0.12, 0.12, 0.12), Color(1.0, 0.45, 0.1))
+				# glowing wall cracks (lava)
+				if (theme == "magma" or theme == "forge") and r3 < 0.1:
+					var gp := fp - Vector3(float(d.x), 0, float(d.y)) * 0.03
+					_add(_glow_chunks, gp + Vector3(0, 1.0, 0), Vector3(0.05, 1.2, 0.05) if d.x != 0 else Vector3(0.05, 1.2, 0.05), Color(1.0, 0.4, 0.08), Vector3(0, 0, 0.2))
+				# cobwebs in corners
+				for d2 in walls:
+					if d2 != d and d2.x * d.x + d2.y * d.y == 0 and (mossy or theme == "void") and _hf(x, y, 110 + wi) < 0.45:
+						var cp := wp + Vector3(float(d.x + d2.x), 0, float(d.y + d2.y)) * (T * 0.5 - 0.06) + Vector3(0, VCDefs.WALL_H - 0.5, 0)
+						var web := Color(0.84, 0.86, 0.9)
+						_add(_wprop_chunks, cp, Vector3(0.9, 0.02, 0.02), _pr(web), Vector3(0, PI * 0.25 * (1.0 if d.x * d2.y - d.y * d2.x > 0 else -1.0), 0))
+						_add(_wprop_chunks, cp - Vector3(float(d.x), 0.2, float(d.y)) * 0.25, Vector3(0.6, 0.02, 0.02), _pr(web), Vector3(0, 0, 0.5))
+						count += 1
+						break
+				# floor dressing hugging the wall
+				var fl := wp + Vector3(float(d.x), 0, float(d.y)) * (T * 0.5 - 0.35)
+				if mossy and _hf(x, y, 120 + wi) < 0.28:
+					for k in 2 + int(_hf(x, y, 125) * 2.0):
+						var off := Vector3(_hf(x, y, 130 + k) - 0.5, 0, _hf(x, y, 140 + k) - 0.5) * 1.2
+						_add(_fprop_chunks, fl + off + Vector3(0, 0.05, 0), Vector3(0.5, 0.1, 0.4) * (0.7 + 0.6 * _hf(x, y, 150 + k)), _pr(Color(0.12, 0.3, 0.1) * (0.8 + 0.5 * _hf(x, y, 160 + k))), Vector3(0, _hf(x, y, 170 + k) * TAU, 0))
+				if frosty and _hf(x, y, 180 + wi) < 0.3:
+					var sn := Color(0.9, 0.96, 1.0)
+					_add(_fprop_chunks, fl + Vector3(0, 0.1, 0), Vector3(1.4, 0.2, 0.55), _pr(sn * 0.92))
+					_add(_fprop_chunks, fl + Vector3(0.1, 0.22, 0), Vector3(0.9, 0.1, 0.35), _pr(sn))
+				if _hf(x, y, 190 + wi) < 0.09 and not narrow and theme in ["crypt", "ruins", "forge", "corridor", "ash", "magma"]:
+					# barrel or crate against the wall (solid so the hero cannot walk through it)
+					var crate := _hf(x, y, 195 + wi) > 0.5
+					var bp := wp + Vector3(float(d.x), 0, float(d.y)) * (T * 0.5 - 0.42)
+					if crate:
+						_add(_fprop_chunks, bp + Vector3(0, 0.4, 0), Vector3(0.8, 0.8, 0.8), _pr(Color(0.45, 0.3, 0.17)), Vector3(0, 0.15, 0))
+						_add(_fprop_chunks, bp + Vector3(0, 0.4, 0), Vector3(0.84, 0.1, 0.84), _pr(Color(0.3, 0.2, 0.12)), Vector3(0, 0.15, 0))
+						_add(_fprop_chunks, bp + Vector3(0, 0.82, 0), Vector3(0.72, 0.06, 0.72), _pr(Color(0.52, 0.36, 0.2)), Vector3(0, 0.15, 0))
+					else:
+						_add(_fprop_chunks, bp + Vector3(0, 0.42, 0), Vector3(0.62, 0.84, 0.62), _pr(Color(0.4, 0.27, 0.15)))
+						_add(_fprop_chunks, bp + Vector3(0, 0.22, 0), Vector3(0.68, 0.08, 0.68), _pr(Color(0.2, 0.2, 0.24)))
+						_add(_fprop_chunks, bp + Vector3(0, 0.62, 0), Vector3(0.68, 0.08, 0.68), _pr(Color(0.2, 0.2, 0.24)))
+					var cs := CollisionShape3D.new()
+					var bs := BoxShape3D.new()
+					bs.size = Vector3(0.75, 0.9, 0.75)
+					cs.shape = bs
+					cs.position = bp + Vector3(0, 0.45, 0)
+					world_body.add_child(cs)
+					count += 1
+					break
+			# open-floor dressing
+			var r := _hf(x, y, 1)
+			var q := _hf(x, y, 2)
+			var o := wp + Vector3((_hf(x, y, 3) - 0.5) * 1.1, 0, (_hf(x, y, 4) - 0.5) * 1.1)
+			if r < 0.07:
+				# rubble
+				for k in 2 + int(q * 2.0):
+					var sz := 0.14 + 0.2 * _hf(x, y, 200 + k)
+					_add(_fprop_chunks, o + Vector3((_hf(x, y, 210 + k) - 0.5) * 0.7, sz * 0.4, (_hf(x, y, 220 + k) - 0.5) * 0.7), Vector3(sz, sz * 0.7, sz * 1.2), _pr(base * 0.78), Vector3(_hf(x, y, 230 + k), _hf(x, y, 240 + k) * TAU, 0.2))
+			elif r < 0.11 and (theme == "crypt" or theme == "ash" or theme == "cavern" or theme == "forge"):
+				# bone pile with a skull
+				var bone := Color(0.86, 0.82, 0.72)
+				for k in 4:
+					_add(_fprop_chunks, o + Vector3((_hf(x, y, 250 + k) - 0.5) * 0.5, 0.05 + 0.04 * float(k % 2), (_hf(x, y, 260 + k) - 0.5) * 0.5), Vector3(0.5, 0.07, 0.07), _pr(bone * (0.85 + 0.2 * _hf(x, y, 270 + k))), Vector3(0, _hf(x, y, 280 + k) * TAU, 0.1))
+				if q < 0.5:
+					_add(_fprop_chunks, o + Vector3(0, 0.2, 0), Vector3(0.24, 0.22, 0.24), _pr(bone), Vector3(0, q * TAU, 0))
+					_add(_fprop_chunks, o + Vector3(0, 0.08, 0), Vector3(0.18, 0.1, 0.2), _pr(bone * 0.85), Vector3(0, q * TAU, 0))
+					for sx in [-1.0, 1.0]:
+						_add(_fprop_chunks, o + Vector3(sx * 0.06, 0.22, -0.1).rotated(Vector3.UP, q * TAU), Vector3(0.06, 0.07, 0.04), _pr(Color(0.05, 0.04, 0.06)), Vector3(0, q * TAU, 0))
+				count += 1
+			elif r < 0.14 and (mossy or theme == "void"):
+				# damp stain / shallow puddle
+				_add(_fprop_chunks, wp + Vector3(0, 0.012, 0), Vector3(0.7 + 0.5 * q, 0.02, 0.6 + 0.5 * _hf(x, y, 5)), _pr(Color(0.1, 0.14, 0.24)), Vector3(0, q * TAU, 0))
+			elif r < 0.18 and (theme == "crypt" or theme == "cavern" or theme == "overgrown"):
+				# glowing mushrooms
+				var mc := Color(0.35, 0.9, 1.0) if q < 0.5 else Color(0.8, 0.4, 1.0)
+				for k in 2 + int(q * 3.0):
+					var mo := o + Vector3((_hf(x, y, 290 + k) - 0.5) * 0.7, 0, (_hf(x, y, 300 + k) - 0.5) * 0.7)
+					var mh := 0.2 + 0.25 * _hf(x, y, 310 + k)
+					_add(_fprop_chunks, mo + Vector3(0, mh * 0.5, 0), Vector3(0.07, mh, 0.07), _pr(Color(0.75, 0.72, 0.65)))
+					_add(_glow_chunks, mo + Vector3(0, mh + 0.04, 0), Vector3(0.22, 0.1, 0.22), mc * (0.8 + 0.3 * _hf(x, y, 320 + k)))
+				count += 1
+			elif r < 0.2 and (theme == "overgrown" or theme == "ruins"):
+				# grass tufts
+				for k in 4:
+					_add(_fprop_chunks, o + Vector3((_hf(x, y, 330 + k) - 0.5) * 0.5, 0.17, (_hf(x, y, 340 + k) - 0.5) * 0.5), Vector3(0.05, 0.34, 0.05), _pr(Color(0.16, 0.38, 0.12) * (0.8 + 0.5 * _hf(x, y, 350 + k))), Vector3(_hf(x, y, 360 + k) * 0.5 - 0.25, 0, _hf(x, y, 370 + k) * 0.5 - 0.25))
+			elif r < 0.215 and (theme == "crypt" or theme == "ruins" or theme == "corridor"):
+				# candle cluster
+				for k in 3:
+					var co := o + Vector3((_hf(x, y, 380 + k) - 0.5) * 0.4, 0, (_hf(x, y, 390 + k) - 0.5) * 0.4)
+					var chh := 0.12 + 0.16 * _hf(x, y, 400 + k)
+					_add(_fprop_chunks, co + Vector3(0, chh * 0.5, 0), Vector3(0.06, chh, 0.06), _pr(Color(0.9, 0.86, 0.72)))
+					_add(_glow_chunks, co + Vector3(0, chh + 0.05, 0), Vector3(0.05, 0.09, 0.05), Color(1.0, 0.75, 0.3))
+				_add(_fprop_chunks, o + Vector3(0, 0.01, 0), Vector3(0.5, 0.02, 0.5), _pr(Color(0.8, 0.76, 0.62)), Vector3(0, q, 0))
+			elif r < 0.2 and hot:
+				# floor lava cracks and ash
+				if q < 0.5:
+					_add(_glow_chunks, wp + Vector3(0, 0.03, 0), Vector3(1.3, 0.03, 0.07), Color(1.0, 0.4, 0.08), Vector3(0, _hf(x, y, 6) * TAU, 0))
+					_add(_glow_chunks, wp + Vector3(0.3, 0.03, 0.2), Vector3(0.6, 0.03, 0.06), Color(1.0, 0.55, 0.12), Vector3(0, _hf(x, y, 7) * TAU, 0))
+				else:
+					_add(_fprop_chunks, o + Vector3(0, 0.05, 0), Vector3(0.9, 0.1, 0.8), _pr(Color(0.12, 0.1, 0.1)), Vector3(0, q * TAU, 0))
+			elif r < 0.17 and frosty:
+				# frost crystals
+				var fc := Color(0.5, 0.9, 1.0)
+				for k in 2:
+					_add(_glow_chunks, o + Vector3((_hf(x, y, 410 + k) - 0.5) * 0.5, 0.25, (_hf(x, y, 420 + k) - 0.5) * 0.5), Vector3(0.12, 0.5 + 0.2 * float(k), 0.12), fc * 0.9, Vector3(0.2, _hf(x, y, 430 + k), 0.15))
+			elif r < 0.12 and theme == "void":
+				# drifting violet shards
+				_add(_glow_chunks, o + Vector3(0, 0.5 + q * 0.6, 0), Vector3(0.14, 0.34, 0.14), Color(0.65, 0.3, 1.0), Vector3(0.4, q * TAU, 0.3))
 
 # -------------------------------------------------------------------- lights
 func _add_light(pos: Vector3, color: Color, energy: float, rng_m: float, flicker: float) -> void:

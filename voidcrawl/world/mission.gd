@@ -519,6 +519,12 @@ func _update_fade_uniforms() -> void:
 	m.set_shader_parameter("player_depth", depth)
 	m.set_shader_parameter("aspect", vp.x / vp.y)
 	m.set_shader_parameter("fade_radius", 0.13 * clampf(13.5 / maxf(depth, 4.0), 0.7, 1.4))
+	if builder.wall_prop_mat is ShaderMaterial:
+		var pm: ShaderMaterial = builder.wall_prop_mat
+		pm.set_shader_parameter("player_screen", Vector2(sp.x / vp.x, sp.y / vp.y))
+		pm.set_shader_parameter("player_depth", depth)
+		pm.set_shader_parameter("aspect", vp.x / vp.y)
+		pm.set_shader_parameter("fade_radius", 0.13 * clampf(13.5 / maxf(depth, 4.0), 0.7, 1.4))
 
 func _physics_process(delta: float) -> void:
 	if not build_done or finished:

@@ -103,8 +103,11 @@ func is_dying_or_dead() -> bool:
 	return state == S.DEAD
 
 # ------------------------------------------------------------------- rig
-func _mk(parent: Node3D, size: Vector3, pos: Vector3, col: Color, em: float = 0.0) -> MeshInstance3D:
-	var mi := VCMats.part(parent, size, pos, col, em)
+var _style_override := ""
+
+func _mk(parent: Node3D, size: Vector3, pos: Vector3, col: Color, em: float = 0.0, style: String = "") -> MeshInstance3D:
+	var st := style if style != "" else (_style_override if em < 1.0 else "")
+	var mi := VCMats.part(parent, size, pos, col, em, "", st)
 	_parts.append(mi)
 	return mi
 
@@ -119,6 +122,10 @@ func _build_rig() -> void:
 	rig.name = "Rig"
 	add_child(rig)
 	var glow: Color = def.get("glow", Color(0.75, 0.35, 1.0))
+	match type_id:
+		"yeti": _style_override = "fur"
+		"brute": _style_override = "stone"
+		"frostwraith", "wisp": _style_override = "ice"
 	match type_id:
 		"husk", "shieldbearer":
 			var bone := Color(0.72, 0.68, 0.62)
@@ -192,7 +199,82 @@ func _build_rig() -> void:
 			_mk(_arm_r, Vector3(0.28, 0.8, 0.28), Vector3(0, -0.35, 0), stone * 0.9)
 			_mk(_arm_r, Vector3(0.14, 0.14, 1.0), Vector3(0, -0.8, -0.4), Color(0.28, 0.2, 0.15))
 			_mk(_arm_r, Vector3(0.5, 0.5, 0.7), Vector3(0, -0.8, -1.0), stone * 1.1)
+	_dress(glow)
 	_set_visible_rig(false)
+
+## Extra silhouette and surface detail so each creature reads clearly from the isometric camera.
+func _dress(glow: Color) -> void:
+	var old := _style_override
+	match type_id:
+		"husk", "shieldbearer":
+			var bone := Color(0.78, 0.74, 0.66)
+			for i in 3:
+				_mk(rig, Vector3(0.5 - 0.06 * float(i), 0.05, 0.1), Vector3(0, 1.2 - 0.14 * float(i), -0.2), bone, 0.0, "bone")   # ribs
+			_mk(rig, Vector3(0.1, 0.5, 0.1), Vector3(0, 0.98, 0.2), bone * 0.9, 0.0, "bone")                                       # spine
+			_mk(rig, Vector3(0.36, 0.1, 0.38), Vector3(0, 1.28, -0.02), bone * 0.9, 0.0, "bone")                                    # jaw
+			_mk(rig, Vector3(0.3, 0.04, 0.05), Vector3(0, 1.31, -0.22), Color(0.95, 0.92, 0.85))                                    # teeth
+			_mk(rig, Vector3(0.2, 0.05, 0.2), Vector3(0.1, 1.76, -0.05), Color(0.12, 0.1, 0.12))                                    # cracked skull
+			_mk(rig, Vector3(0.62, 0.26, 0.04), Vector3(0, 0.62, -0.16), Color(0.26, 0.2, 0.18), 0.0, "leather")                     # loincloth
+			_mk(rig, Vector3(0.2, 0.12, 0.2), Vector3(-0.42, 1.38, 0), Color(0.32, 0.26, 0.24), 0.0, "leather")                      # rag pauldron
+			if type_id == "shieldbearer":
+				_mk(rig, Vector3(0.52, 0.2, 0.52), Vector3(0, 1.74, 0), Color(0.45, 0.48, 0.58), 0.0, "plate")                       # iron helm
+				_mk(rig, Vector3(0.08, 0.24, 0.5), Vector3(0, 1.96, 0), glow * 0.8, 0.8)                                              # crest
+		"slinger", "cultist", "necromancer", "icearcher":
+			var robe: Color = def.get("robe", Color(0.2, 0.14, 0.3))
+			_mk(rig, Vector3(0.6, 0.06, 0.38), Vector3(0, 0.3, 0), glow * 0.7, 0.8)                                                 # glowing hem trim
+			_mk(rig, Vector3(0.12, 0.7, 0.04), Vector3(0, 0.95, -0.15), glow * 0.7, 0.8)                                            # front sash stripe
+			_mk(rig, Vector3(0.5, 0.08, 0.34), Vector3(0, 0.7, 0), Color(0.3, 0.2, 0.15), 0.0, "leather")                            # rope belt
+			_mk(rig, Vector3(0.16, 0.22, 0.14), Vector3(0, 1.78, 0.1), robe, 0.0)                                                    # hood peak
+			_mk(rig, Vector3(0.52, 0.1, 0.1), Vector3(0, 1.66, -0.2), robe * 0.7)                                                    # hood brim shadow
+			_mk(rig, Vector3(0.18, 0.18, 0.05), Vector3(0, 1.1, -0.17), glow, 1.6, "glow")                                           # amulet
+			_mk(rig, Vector3(0.2, 0.3, 0.2), Vector3(-0.32, 0.95, 0), robe * 1.1)                                                    # sleeve flare
+			_mk(rig, Vector3(0.2, 0.3, 0.2), Vector3(0.32, 0.95, 0), robe * 1.1)
+			if type_id == "necromancer":
+				for sx in [-1.0, 1.0]:
+					_mk(rig, Vector3(0.1, 0.5, 0.1), Vector3(sx * 0.2, 2.05, 0.1), Color(0.85, 0.82, 0.75), 0.0, "bone").rotation.z = -sx * 0.25   # bone horns
+			if type_id == "icearcher":
+				for sx in [-1.0, 1.0]:
+					_mk(rig, Vector3(0.12, 0.34, 0.12), Vector3(sx * 0.34, 1.52, 0.04), Color(0.7, 0.92, 1.0), 0.6, "ice").rotation.z = -sx * 0.3  # ice shoulder shards
+				_mk(rig, Vector3(0.2, 0.5, 0.14), Vector3(0.1, 1.1, 0.24), Color(0.3, 0.26, 0.34), 0.0, "leather")                      # quiver
+		"spiderling", "embermite":
+			for i in 3:
+				_mk(rig, Vector3(0.5, 0.04, 0.08), Vector3(0, 0.71, 0.0 + 0.2 * float(i)), glow, 1.2)                                 # abdomen stripes
+			for sx in [-1.0, 1.0]:
+				_mk(rig, Vector3(0.08, 0.08, 0.2), Vector3(sx * 0.12, 0.42, -0.74), Color(0.9, 0.88, 0.8), 0.0, "bone")                # fangs
+				_mk(rig, Vector3(0.14, 0.14, 0.14), Vector3(sx * 0.14, 0.62, -0.62), Color(0.1, 0.07, 0.14))                            # eye sockets
+				_mk(rig, Vector3(0.05, 0.05, 0.04), Vector3(sx * 0.2, 0.52, -0.7), glow, 2.5)                                           # side eyes
+			for sx in [-1.0, 1.0]:
+				for i in 3:
+					_mk(rig, Vector3(0.06, 0.14, 0.06), Vector3(sx * (0.2 + 0.1 * float(i)), 0.74, 0.1 + 0.2 * float(i)), Color(0.28, 0.2, 0.36))  # back spines
+		"wisp", "frostwraith":
+			for sx in [-1.0, 1.0]:
+				_mk(rig, Vector3(0.12, 0.08, 0.05), Vector3(sx * 0.16, 0.08, -0.31), Color(1, 1, 1), 3.0)                                # eyes
+			_mk(rig, Vector3(0.22, 0.05, 0.05), Vector3(0, -0.12, -0.31), Color(1, 1, 1), 2.0)                                           # mouth
+			for i in 4:
+				var t := _mk(rig, Vector3(0.22 - 0.04 * float(i), 0.2, 0.22 - 0.04 * float(i)), Vector3(0, -0.5 - 0.22 * float(i), 0.1 * float(i)), glow * 0.9, 1.2)  # wispy tail
+				t.set_meta("tail", i)
+			for sx in [-1.0, 1.0]:
+				_mk(rig, Vector3(0.5, 0.08, 0.08), Vector3(sx * 0.5, 0.0, 0.0), glow * 1.1, 1.6).rotation.z = sx * 0.4                  # arm wisps
+		"brute", "yeti":
+			var base: Color = def.get("body", Color(0.4, 0.36, 0.46))
+			for sx in [-1.0, 1.0]:
+				_mk(rig, Vector3(0.12, 0.34, 0.12), Vector3(sx * 0.22, 2.06, 0), Color(0.88, 0.84, 0.74), 0.0, "bone").rotation.z = -sx * 0.5   # horns / tusks up
+				_mk(rig, Vector3(0.1, 0.22, 0.1), Vector3(sx * 0.14, 1.52, -0.26), Color(0.95, 0.92, 0.84), 0.0, "bone").rotation.x = -0.4      # tusks
+				_mk(rig, Vector3(0.34, 0.12, 0.34), Vector3(sx * 0.62, 0.95, 0), base * 0.8)                                                  # forearm wraps
+			_mk(rig, Vector3(0.5, 0.1, 0.12), Vector3(0, 1.9, -0.14), base * 0.6)                                                          # brow ridge
+			_mk(rig, Vector3(0.96, 0.12, 0.56), Vector3(0, 0.62, 0), Color(0.3, 0.22, 0.16), 0.0, "leather")                               # belt
+			_mk(rig, Vector3(0.16, 0.16, 0.06), Vector3(0, 0.62, -0.3), glow, 1.4)                                                         # belt gem
+			if type_id == "yeti":
+				_style_override = "fur"
+				for i in 5:
+					_mk(rig, Vector3(0.18, 0.2, 0.18), Vector3(-0.36 + 0.18 * float(i), 1.62, 0.2), Color(0.88, 0.94, 1.0))               # fur mane tufts
+				for sx in [-1.0, 1.0]:
+					for i in 3:
+						_mk(rig, Vector3(0.05, 0.05, 0.16), Vector3(sx * 0.62 + (-0.08 + 0.08 * float(i)), 0.3, -0.18), Color(0.85, 0.95, 1.0), 0.6, "ice")  # claws
+			else:
+				for i in 4:
+					_mk(rig, Vector3(0.12, 0.2, 0.12), Vector3(-0.3 + 0.2 * float(i), 1.55, 0.3), base * 1.2, 0.0, "stone")                # back spikes
+	_style_override = old
 
 func _set_visible_rig(v: bool) -> void:
 	if rig != null:

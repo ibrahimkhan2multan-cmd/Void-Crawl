@@ -138,8 +138,8 @@ func cooldown_fraction(which: String) -> float:
 	return 0.0
 
 # ------------------------------------------------------------------ rig
-func _mk(parent: Node3D, size: Vector3, pos: Vector3, col: Color, em: float = 0.0) -> MeshInstance3D:
-	var mi := VCMats.part(parent, size, pos, col, em)
+func _mk(parent: Node3D, size: Vector3, pos: Vector3, col: Color, em: float = 0.0, style: String = "") -> MeshInstance3D:
+	var mi := VCMats.part(parent, size, pos, col, em, "", style)
 	_parts.append(mi)
 	return mi
 
@@ -148,31 +148,54 @@ func _build_rig() -> void:
 	rig.name = "Rig"
 	add_child(rig)
 	var cloth := Color(0.42, 0.27, 0.72)
+	var cloth_dk := Color(0.27, 0.2, 0.42)
 	var skin := Color(0.78, 0.65, 0.58)
+	var gold := Color(0.95, 0.8, 0.35)
+	var steel := Color(0.62, 0.62, 0.74)
 	_leg_l = Node3D.new(); _leg_l.position = Vector3(-0.16, 0.62, 0); rig.add_child(_leg_l)
 	_leg_r = Node3D.new(); _leg_r.position = Vector3(0.16, 0.62, 0); rig.add_child(_leg_r)
-	_mk(_leg_l, Vector3(0.24, 0.62, 0.26), Vector3(0, -0.31, 0), Color(0.27, 0.2, 0.42))
-	_mk(_leg_r, Vector3(0.24, 0.62, 0.26), Vector3(0, -0.31, 0), Color(0.27, 0.2, 0.42))
+	for leg in [_leg_l, _leg_r]:
+		_mk(leg, Vector3(0.24, 0.62, 0.26), Vector3(0, -0.31, 0), cloth_dk)
+		_mk(leg, Vector3(0.27, 0.12, 0.29), Vector3(0, -0.2, 0), steel)                     # knee pad
+		_mk(leg, Vector3(0.3, 0.1, 0.32), Vector3(0, -0.47, -0.01), Color(0.3, 0.22, 0.2), 0.0, "leather")  # boot cuff
 	_boot_l = _mk(_leg_l, Vector3(0.28, 0.2, 0.36), Vector3(0, -0.56, -0.04), Color(0.2, 0.16, 0.24))
 	_boot_r = _mk(_leg_r, Vector3(0.28, 0.2, 0.36), Vector3(0, -0.56, -0.04), Color(0.2, 0.16, 0.24))
+	_mk(_leg_l, Vector3(0.3, 0.05, 0.38), Vector3(0, -0.66, -0.04), Color(0.1, 0.08, 0.12))   # sole
+	_mk(_leg_r, Vector3(0.3, 0.05, 0.38), Vector3(0, -0.66, -0.04), Color(0.1, 0.08, 0.12))
 	_torso = _mk(rig, Vector3(0.62, 0.7, 0.36), Vector3(0, 0.98, 0), cloth)
+	_mk(rig, Vector3(0.22, 0.52, 0.04), Vector3(0, 0.9, -0.19), Color(0.5, 0.32, 0.85))        # tabard panel
+	_mk(rig, Vector3(0.24, 0.05, 0.05), Vector3(0, 0.66, -0.2), gold, 0.4, "plate")             # tabard hem
 	_mk(rig, Vector3(0.66, 0.1, 0.4), Vector3(0, 0.66, 0), Color(0.55, 0.3, 0.9), 0.6)       # belt
+	_mk(rig, Vector3(0.12, 0.12, 0.05), Vector3(0, 0.66, -0.21), gold, 0.8, "plate")            # belt buckle
+	_mk(rig, Vector3(0.14, 0.18, 0.12), Vector3(0.36, 0.6, -0.04), Color(0.4, 0.28, 0.2), 0.0, "leather")  # hip pouch
 	_cape = _mk(rig, Vector3(0.58, 0.9, 0.08), Vector3(0, 0.95, 0.24), Color(0.12, 0.62, 0.7))
-	_head = _mk(rig, Vector3(0.42, 0.42, 0.42), Vector3(0, 1.58, 0), skin)
+	_head = _mk(rig, Vector3(0.42, 0.42, 0.42), Vector3(0, 1.58, 0), skin, 0.0, "skin")
 	_hood = _mk(rig, Vector3(0.5, 0.5, 0.5), Vector3(0, 1.62, 0.05), Color(0.3, 0.2, 0.5))
-	_mk(rig, Vector3(0.34, 0.1, 0.05), Vector3(0, 1.58, -0.24), Color(0.8, 0.5, 1.0), 2.2)   # glowing eyes
+	_mk(rig, Vector3(0.14, 0.2, 0.14), Vector3(0, 1.94, 0.18), Color(0.3, 0.2, 0.5))           # hood tip
+	_mk(rig, Vector3(0.44, 0.1, 0.06), Vector3(0, 1.78, -0.22), Color(0.2, 0.13, 0.35))       # hood brim
+	_mk(rig, Vector3(0.09, 0.09, 0.04), Vector3(-0.1, 1.58, -0.24), Color(1.0, 1.0, 1.0), 1.5)    # eyes: white
+	_mk(rig, Vector3(0.09, 0.09, 0.04), Vector3(0.1, 1.58, -0.24), Color(1.0, 1.0, 1.0), 1.5)
+	_mk(rig, Vector3(0.05, 0.06, 0.045), Vector3(-0.1, 1.58, -0.255), Color(0.55, 0.3, 1.0), 2.4)  # pupils
+	_mk(rig, Vector3(0.05, 0.06, 0.045), Vector3(0.1, 1.58, -0.255), Color(0.55, 0.3, 1.0), 2.4)
+	_mk(rig, Vector3(0.12, 0.03, 0.04), Vector3(0, 1.47, -0.24), Color(0.5, 0.3, 0.3))        # mouth
 	_helm_part = _mk(rig, Vector3(0.5, 0.2, 0.5), Vector3(0, 1.84, 0.02), Color(0.6, 0.58, 0.68))
-	_mk(rig, Vector3(0.3, 0.14, 0.4), Vector3(-0.4, 1.34, 0), Color(0.7, 0.68, 0.82))          # pauldrons
-	_mk(rig, Vector3(0.3, 0.14, 0.4), Vector3(0.4, 1.34, 0), Color(0.7, 0.68, 0.82))
+	_mk(rig, Vector3(0.3, 0.14, 0.4), Vector3(-0.4, 1.34, 0), Color(0.7, 0.68, 0.82), 0.0, "plate")  # pauldrons
+	_mk(rig, Vector3(0.3, 0.14, 0.4), Vector3(0.4, 1.34, 0), Color(0.7, 0.68, 0.82), 0.0, "plate")
+	_mk(rig, Vector3(0.14, 0.08, 0.3), Vector3(-0.44, 1.43, 0), gold, 0.5)
+	_mk(rig, Vector3(0.14, 0.08, 0.3), Vector3(0.44, 1.43, 0), gold, 0.5)
 	_mk(rig, Vector3(0.2, 0.2, 0.06), Vector3(0, 1.05, -0.2), Color(0.3, 0.95, 1.0), 2.0)      # chest gem
+	_mk(rig, Vector3(0.28, 0.28, 0.03), Vector3(0, 1.05, -0.19), gold, 0.5, "plate")           # gem setting
 	_mk(rig, Vector3(0.66, 0.1, 0.4), Vector3(0, 1.36, 0), Color(0.12, 0.62, 0.7))            # scarf
+	_mk(rig, Vector3(0.12, 0.34, 0.06), Vector3(-0.2, 1.17, 0.2), Color(0.12, 0.62, 0.7))    # scarf tails
+	_mk(rig, Vector3(0.12, 0.26, 0.06), Vector3(0.0, 1.2, 0.21), Color(0.1, 0.52, 0.6))
 	VCMats.add_blob(self, 1.5)
 	_arm_l = Node3D.new(); _arm_l.position = Vector3(-0.42, 1.28, 0); rig.add_child(_arm_l)
 	_arm_r = Node3D.new(); _arm_r.position = Vector3(0.42, 1.28, 0); rig.add_child(_arm_r)
-	_mk(_arm_l, Vector3(0.2, 0.62, 0.22), Vector3(0, -0.28, 0), cloth * 1.1)
-	_mk(_arm_r, Vector3(0.2, 0.62, 0.22), Vector3(0, -0.28, 0), cloth * 1.1)
-	_mk(_arm_l, Vector3(0.22, 0.16, 0.24), Vector3(0, -0.62, 0), skin)
-	_mk(_arm_r, Vector3(0.22, 0.16, 0.24), Vector3(0, -0.62, 0), skin)
+	for arm in [_arm_l, _arm_r]:
+		_mk(arm, Vector3(0.2, 0.62, 0.22), Vector3(0, -0.28, 0), cloth * 1.1)
+		_mk(arm, Vector3(0.23, 0.2, 0.25), Vector3(0, -0.44, 0), Color(0.3, 0.22, 0.2), 0.0, "leather")   # bracer
+		_mk(arm, Vector3(0.22, 0.16, 0.24), Vector3(0, -0.62, 0), skin, 0.0, "skin")
+		_mk(arm, Vector3(0.24, 0.08, 0.26), Vector3(0, -0.55, 0), Color(0.22, 0.17, 0.2), 0.0, "leather")  # glove cuff
 	_weapon_root = Node3D.new()
 	_weapon_root.position = Vector3(0, -0.62, -0.1)
 	_arm_r.add_child(_weapon_root)
@@ -215,37 +238,77 @@ func refresh_visuals() -> void:
 		rar = int(wp["rarity"])
 	var glow := VCDefs.rarity_color(rar)
 	var em := 0.0 if rar < 2 else 1.2
+	var W := _weapon_root
+	var wood := Color(0.34, 0.24, 0.17)
+	var gold := Color(0.95, 0.8, 0.35)
+	var dark := Color(0.2, 0.2, 0.26)
 	match kind:
 		"sword":
-			VCMats.part(_weapon_root, Vector3(0.09, 0.12, 0.46), Vector3(0, 0, 0.1), Color(0.3, 0.2, 0.15))
-			VCMats.part(_weapon_root, Vector3(0.34, 0.07, 0.07), Vector3(0, 0, -0.14), Color(0.3, 0.3, 0.38))
-			VCMats.part(_weapon_root, Vector3(0.1, 0.05, 1.0), Vector3(0, 0, -0.68), wcol, em).material_override = VCMats.solid(wcol, em)
+			VCMats.part(W, Vector3(0.09, 0.12, 0.4), Vector3(0, 0, 0.12), Color(0.3, 0.2, 0.15), 0.0, "", "leather")      # grip
+			VCMats.part(W, Vector3(0.14, 0.14, 0.12), Vector3(0, 0, 0.36), gold, 0.3, "", "plate")                          # pommel
+			VCMats.part(W, Vector3(0.4, 0.08, 0.09), Vector3(0, 0, -0.1), gold * 0.9, 0.2, "", "plate")                     # crossguard
+			VCMats.part(W, Vector3(0.09, 0.14, 0.12), Vector3(-0.2, 0, -0.1), gold, 0.3)
+			VCMats.part(W, Vector3(0.09, 0.14, 0.12), Vector3(0.2, 0, -0.1), gold, 0.3)
+			VCMats.part(W, Vector3(0.12, 0.05, 0.78), Vector3(0, 0, -0.53), wcol, em, "", "metal")                          # blade
+			VCMats.part(W, Vector3(0.07, 0.05, 0.3), Vector3(0, 0, -1.07), wcol, em, "", "metal")                           # taper
+			VCMats.part(W, Vector3(0.03, 0.05, 0.12), Vector3(0, 0, -1.28), wcol, em, "", "metal")                          # tip
+			VCMats.part(W, Vector3(0.04, 0.062, 0.82), Vector3(0, 0, -0.55), wcol.darkened(0.35), 0.0, "", "metal")       # fuller groove
+			if rar >= 2:
+				VCMats.part(W, Vector3(0.016, 0.06, 1.0), Vector3(-0.065, 0, -0.62), glow, 2.0)                              # glowing edges
+				VCMats.part(W, Vector3(0.016, 0.06, 1.0), Vector3(0.065, 0, -0.62), glow, 2.0)
 		"axe":
-			VCMats.part(_weapon_root, Vector3(0.09, 0.09, 1.0), Vector3(0, 0, -0.2), Color(0.28, 0.19, 0.14))
-			VCMats.part(_weapon_root, Vector3(0.08, 0.5, 0.42), Vector3(0, 0.12, -0.72), wcol, em).material_override = VCMats.solid(wcol, em)
+			VCMats.part(W, Vector3(0.09, 0.09, 1.1), Vector3(0, 0, -0.2), wood, 0.0, "", "leather")
+			VCMats.part(W, Vector3(0.1, 0.1, 0.14), Vector3(0, 0, 0.36), dark, 0.0, "", "plate")
+			VCMats.part(W, Vector3(0.1, 0.5, 0.4), Vector3(0, 0.12, -0.72), wcol, em, "", "metal")                           # head
+			VCMats.part(W, Vector3(0.08, 0.34, 0.2), Vector3(0, 0.2, -0.98), wcol * 1.1, em, "", "metal")                   # bit
+			VCMats.part(W, Vector3(0.1, 0.5, 0.06), Vector3(0, 0.12, -1.0), glow if rar >= 2 else wcol * 1.3, 1.2 if rar >= 2 else 0.2)  # sharp edge
+			VCMats.part(W, Vector3(0.07, 0.2, 0.14), Vector3(0, -0.22, -0.7), dark)                                          # back spike
 		"dagger":
-			VCMats.part(_weapon_root, Vector3(0.08, 0.1, 0.26), Vector3(0, 0, 0.05), Color(0.3, 0.2, 0.15))
-			VCMats.part(_weapon_root, Vector3(0.07, 0.04, 0.56), Vector3(0, 0, -0.4), wcol, em).material_override = VCMats.solid(wcol, em)
+			VCMats.part(W, Vector3(0.08, 0.1, 0.24), Vector3(0, 0, 0.1), Color(0.3, 0.2, 0.15), 0.0, "", "leather")
+			VCMats.part(W, Vector3(0.12, 0.12, 0.07), Vector3(0, 0, 0.24), gold, 0.3)
+			VCMats.part(W, Vector3(0.26, 0.07, 0.07), Vector3(0, 0, -0.04), gold * 0.9, 0.2)
+			VCMats.part(W, Vector3(0.08, 0.04, 0.46), Vector3(0, 0, -0.3), wcol, em, "", "metal")
+			VCMats.part(W, Vector3(0.04, 0.04, 0.18), Vector3(0, 0, -0.62), wcol, em, "", "metal")
+			if rar >= 2:
+				VCMats.part(W, Vector3(0.02, 0.05, 0.6), Vector3(0, 0, -0.36), glow, 2.0)
 		"spear":
-			VCMats.part(_weapon_root, Vector3(0.07, 0.07, 1.7), Vector3(0, 0, -0.5), Color(0.34, 0.24, 0.17))
-			VCMats.part(_weapon_root, Vector3(0.12, 0.05, 0.5), Vector3(0, 0, -1.5), wcol, em).material_override = VCMats.solid(wcol, em)
-			VCMats.part(_weapon_root, Vector3(0.2, 0.05, 0.12), Vector3(0, 0, -1.2), glow, 0.8)
+			VCMats.part(W, Vector3(0.07, 0.07, 1.7), Vector3(0, 0, -0.5), wood, 0.0, "", "leather")
+			VCMats.part(W, Vector3(0.12, 0.05, 0.5), Vector3(0, 0, -1.5), wcol, em, "", "metal")
+			VCMats.part(W, Vector3(0.06, 0.05, 0.22), Vector3(0, 0, -1.84), wcol, em, "", "metal")
+			VCMats.part(W, Vector3(0.22, 0.05, 0.1), Vector3(0, 0, -1.22), glow, 0.8)
+			VCMats.part(W, Vector3(0.08, 0.2, 0.1), Vector3(0, 0, -1.2), dark)                                               # collar
+			VCMats.part(W, Vector3(0.1, 0.1, 0.12), Vector3(0, 0, 0.36), dark)
 		"hammer":
-			VCMats.part(_weapon_root, Vector3(0.1, 0.1, 1.2), Vector3(0, 0, -0.3), Color(0.3, 0.2, 0.15))
-			VCMats.part(_weapon_root, Vector3(0.5, 0.42, 0.62), Vector3(0, 0.05, -1.0), wcol, em).material_override = VCMats.solid(wcol, em)
-			VCMats.part(_weapon_root, Vector3(0.54, 0.1, 0.1), Vector3(0, 0.05, -1.0), glow, 1.0)
+			VCMats.part(W, Vector3(0.1, 0.1, 1.3), Vector3(0, 0, -0.3), wood, 0.0, "", "leather")
+			VCMats.part(W, Vector3(0.52, 0.44, 0.64), Vector3(0, 0.05, -1.0), wcol, em, "", "stone")
+			VCMats.part(W, Vector3(0.56, 0.1, 0.1), Vector3(0, 0.05, -1.0), glow, 1.0)
+			VCMats.part(W, Vector3(0.56, 0.5, 0.1), Vector3(0, 0.05, -0.7), dark, 0.0, "", "plate")                         # bands
+			VCMats.part(W, Vector3(0.56, 0.5, 0.1), Vector3(0, 0.05, -1.3), dark, 0.0, "", "plate")
+			VCMats.part(W, Vector3(0.16, 0.16, 0.16), Vector3(0, 0, 0.4), dark, 0.0, "", "plate")
 		"crossbow":
-			VCMats.part(_weapon_root, Vector3(0.1, 0.12, 0.7), Vector3(0, 0, -0.3), Color(0.32, 0.22, 0.15))
-			VCMats.part(_weapon_root, Vector3(0.9, 0.06, 0.08), Vector3(0, 0, -0.62), wcol, em).material_override = VCMats.solid(wcol, em)
-			VCMats.part(_weapon_root, Vector3(0.04, 0.04, 0.6), Vector3(0, 0.08, -0.5), glow, 1.0)
+			VCMats.part(W, Vector3(0.1, 0.12, 0.76), Vector3(0, 0, -0.3), Color(0.32, 0.22, 0.15), 0.0, "", "leather")
+			VCMats.part(W, Vector3(0.96, 0.06, 0.08), Vector3(0, 0, -0.62), wcol, em, "", "metal")
+			VCMats.part(W, Vector3(0.1, 0.1, 0.1), Vector3(-0.5, 0, -0.55), dark)
+			VCMats.part(W, Vector3(0.1, 0.1, 0.1), Vector3(0.5, 0, -0.55), dark)
+			VCMats.part(W, Vector3(0.04, 0.04, 0.6), Vector3(0, 0.08, -0.5), glow, 1.0)
+			VCMats.part(W, Vector3(0.02, 0.02, 0.5), Vector3(0, 0, -0.35), Color(0.9, 0.9, 0.8))                              # string
+			VCMats.part(W, Vector3(0.08, 0.18, 0.12), Vector3(0, -0.14, -0.1), Color(0.28, 0.2, 0.14))                         # trigger grip
 		"staff":
-			VCMats.part(_weapon_root, Vector3(0.08, 0.08, 1.5), Vector3(0, 0, -0.4), Color(0.3, 0.2, 0.14))
-			VCMats.part(_weapon_root, Vector3(0.3, 0.3, 0.3), Vector3(0, 0, -1.3), wcol, 1.8).material_override = VCMats.solid(wcol, 1.8)
-			VCMats.part(_weapon_root, Vector3(0.42, 0.06, 0.42), Vector3(0, 0, -1.3), glow, 1.2)
+			VCMats.part(W, Vector3(0.08, 0.08, 1.6), Vector3(0, 0, -0.4), Color(0.3, 0.2, 0.14), 0.0, "", "leather")
+			VCMats.part(W, Vector3(0.3, 0.3, 0.3), Vector3(0, 0, -1.3), wcol, 1.8).material_override = VCMats.solid(wcol, 1.8)
+			VCMats.part(W, Vector3(0.44, 0.06, 0.44), Vector3(0, 0, -1.3), glow, 1.2)
+			VCMats.part(W, Vector3(0.06, 0.44, 0.44), Vector3(0, 0, -1.3), glow, 1.2)
+			for sx in [-1.0, 1.0]:
+				VCMats.part(W, Vector3(0.06, 0.34, 0.06), Vector3(sx * 0.2, 0, -1.2), Color(0.35, 0.25, 0.18), 0.0, "", "leather").rotation.y = sx * 0.4   # prongs
+			VCMats.part(W, Vector3(0.12, 0.12, 0.12), Vector3(0, 0, 0.4), gold, 0.3)
 		"bow":
-			VCMats.part(_weapon_root, Vector3(0.06, 1.1, 0.08), Vector3(0, 0, -0.2), wcol, em).material_override = VCMats.solid(wcol, em)
-			VCMats.part(_weapon_root, Vector3(0.04, 0.5, 0.04), Vector3(0, 0.55, -0.1), wcol * 0.8).rotation.x = 0.7
-			VCMats.part(_weapon_root, Vector3(0.04, 0.5, 0.04), Vector3(0, -0.55, -0.1), wcol * 0.8).rotation.x = -0.7
+			VCMats.part(W, Vector3(0.06, 1.1, 0.08), Vector3(0, 0, -0.2), wcol, em, "", "leather")
+			VCMats.part(W, Vector3(0.05, 0.5, 0.05), Vector3(0, 0.55, -0.1), wcol * 0.9, 0.0, "", "leather").rotation.x = 0.7
+			VCMats.part(W, Vector3(0.05, 0.5, 0.05), Vector3(0, -0.55, -0.1), wcol * 0.9, 0.0, "", "leather").rotation.x = -0.7
+			VCMats.part(W, Vector3(0.02, 1.3, 0.02), Vector3(0, 0, 0.1), Color(0.92, 0.9, 0.82))                               # string
+			VCMats.part(W, Vector3(0.1, 0.16, 0.1), Vector3(0, 0, -0.2), gold, 0.3)                                           # grip wrap
+			if rar >= 2:
+				VCMats.part(W, Vector3(0.02, 1.1, 0.02), Vector3(0, 0, -0.26), glow, 1.6)
 		_:
 			pass
 	# armour tint

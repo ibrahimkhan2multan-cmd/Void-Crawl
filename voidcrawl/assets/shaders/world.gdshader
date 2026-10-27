@@ -11,9 +11,21 @@ uniform float player_depth = 12.0;
 uniform float fade_radius = 0.14;
 uniform float aspect = 1.7778;
 uniform float fade_enabled = 1.0;
+uniform float frost_mode = 0.0;      // 1 = ice dungeon: the moss channel becomes frost
 
 varying vec3 wpos;
 varying vec3 wnorm;
+
+float hash21(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+float vnoise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x), mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), f.x), f.y);
+}
 
 void vertex() {
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -52,6 +64,36 @@ void fragment() {
 		// walls: darker near the floor, lit rim near the top
 		stone *= mix(0.55, 1.0, smoothstep(0.0, 1.4, wpos.y));
 		stone += vec3(0.05, 0.035, 0.08) * smoothstep(2.0, 2.8, wpos.y);
+	}
+	// cracked bricks: a thin dark zig-zag on roughly one brick in six
+	if (h > 0.84) {
+		float cx = 0.3 + 0.4 * f.y + 0.06 * sin(f.y * 14.0);
+		float crack = step(abs(f.x - cx), 0.035) * step(0.12, f.y) * step(f.y, 0.88);
+		stone *= 1.0 - 0.55 * crack;
+	}
+	// moss (or frost): chunky 8-per-metre pixels, thicker along mortar and low on walls
+	float amt = clamp(1.0 - COLOR.a, 0.0, 1.0);
+	if (amt > 0.01) {
+		vec2 pq = floor(uv * 8.0) / 8.0;
+		float n = vnoise(pq * 1.25) * 0.6 + vnoise(pq * 3.3 + 9.0) * 0.4;
+		float low = (wnorm.y > 0.6) ? 0.0 : (1.0 - smoothstep(0.1, 2.0, wpos.y)) * 0.2;
+		float edge_grow = (1.0 - mortar) * 0.25;
+		float m = smoothstep(0.74 - amt * 0.2, 0.84 - amt * 0.2, n + low + edge_grow * amt);
+		float px = hash21(pq * 17.0);
+		if (frost_mode > 0.5) {
+			vec3 ice = mix(vec3(0.78, 0.9, 1.0), vec3(1.0), px * 0.8);
+			stone = mix(stone, ice * (0.8 + 0.3 * px), m * 0.85);
+			if (m > 0.5 && px > 0.93) { stone = vec3(1.0); }
+		} else {
+			vec3 mc = mix(vec3(0.07, 0.2, 0.06), vec3(0.2, 0.42, 0.12), px);
+			stone = mix(stone, mc, m * 0.92);
+			if (m > 0.5 && px > 0.9) { stone = vec3(0.34, 0.52, 0.16); }
+		}
+	}
+	// slow wet stains on floors
+	if (wnorm.y > 0.6) {
+		float st = vnoise(floor(uv * 6.0) / 6.0 * 0.5 + 40.0);
+		stone *= 1.0 - 0.18 * smoothstep(0.62, 0.8, st);
 	}
 	ALBEDO = stone;
 	ROUGHNESS = 1.0;

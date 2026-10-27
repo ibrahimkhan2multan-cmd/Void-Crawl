@@ -20,6 +20,7 @@ var _cape_len := 1.0
 var _cape_col := Color(0.12, 0.62, 0.7)
 var _t := 0.0
 var _pulse_parts: Array = []
+var _leg_parts: Array = []           # nodes attached to the legs (freed on refresh)
 
 func setup(p_player: Node3D, p_rig: Node3D) -> void:
 	player = p_player
@@ -32,6 +33,10 @@ func _b(parent: Node3D, size: Vector3, pos: Vector3, col: Color, em: float = 0.0
 	return mi
 
 func _clear() -> void:
+	for lp in _leg_parts:
+		if is_instance_valid(lp):
+			lp.queue_free()
+	_leg_parts.clear()
 	if _gear != null:
 		_gear.queue_free()
 	if _aura != null:
@@ -58,6 +63,7 @@ func refresh(equipment: Dictionary) -> void:
 		var it: Dictionary = equipment[slot]
 		var sid := VCSets.set_of(it)
 		if sid == "" or not VCSets.DEFS.has(sid):
+			_build_worn(int(slot), it)
 			continue
 		match int(slot):
 			VCDefs.Slot.HELM: _build_helm(sid)
@@ -176,6 +182,8 @@ func _build_boots(sid: String) -> void:
 		var strip := VCMats.part(leg, Vector3(0.32, 0.05, 0.34), Vector3(0, -0.28, 0), g, 1.6)
 		greave.name = "SetGreave"
 		strip.name = "SetGreave"
+		_leg_parts.append(greave)
+		_leg_parts.append(strip)
 		_gear.set_meta("greaves", true)
 		_pulse_parts.append(strip)
 
@@ -249,3 +257,92 @@ func tick(delta: float, run: float) -> void:
 	var cape: MeshInstance3D = player.get("_cape")
 	if cape != null and _cape_len > 1.0:
 		cape.rotation.x = -0.1 - run * 0.55 + sin(_t * 4.0) * 0.06
+
+
+# ------------------------------------------------------------- worn (non-set) gear
+## Every equipped helm/armour/boots/trinket changes the hero's look. The base item picks a style,
+## its colour tints the metal, and rarity adds glow trim and extra ornaments.
+func _build_worn(slot: int, it: Dictionary) -> void:
+	var base_id := String(it.get("base", ""))
+	var c := VCItems.base_color(it)
+	var rar := int(it.get("rarity", 0))
+	var rc := VCDefs.rarity_color(rar)
+	var v := absi(hash(base_id)) % 4
+	match slot:
+		VCDefs.Slot.HELM: _worn_helm(c, rc, rar, v)
+		VCDefs.Slot.ARMOR: _worn_armor(c, rc, rar, v)
+		VCDefs.Slot.BOOTS: _worn_boots(c, rc, rar, v)
+		VCDefs.Slot.TRINKET: _worn_trinket(c, rc, rar, v)
+
+func _worn_helm(c: Color, rc: Color, rar: int, v: int) -> void:
+	_b(_gear, Vector3(0.56, 0.28, 0.56), Vector3(0, 1.84, 0.02), c).material_override = VCMats.solid(c, 0.0, false, "plate")
+	_b(_gear, Vector3(0.34, 0.07, 0.04), Vector3(0, 1.68, -0.28), Color(0.05, 0.04, 0.08))            # eye slit
+	match v:
+		0:   # crested
+			_b(_gear, Vector3(0.1, 0.22, 0.5), Vector3(0, 2.07, 0.02), c * 1.1)
+		1:   # horned
+			for sx in [-1.0, 1.0]:
+				_b(_gear, Vector3(0.1, 0.26, 0.1), Vector3(sx * 0.3, 2.0, 0), Color(0.9, 0.86, 0.74), 0.0, Vector3(0, 0, -sx * 0.5))
+		2:   # spiked crown
+			for i in 5:
+				var a := TAU * float(i) / 5.0
+				_b(_gear, Vector3(0.07, 0.16, 0.07), Vector3(cos(a) * 0.22, 2.05, sin(a) * 0.22), c * 1.2)
+		3:   # visored
+			_b(_gear, Vector3(0.5, 0.2, 0.06), Vector3(0, 1.7, -0.29), c * 0.8)
+			_b(_gear, Vector3(0.14, 0.14, 0.06), Vector3(0, 1.88, -0.29), rc, 0.8 if rar >= 2 else 0.0)
+	if rar >= 2:
+		_b(_gear, Vector3(0.58, 0.04, 0.58), Vector3(0, 1.72, 0.02), rc, 1.0 + 0.4 * float(rar - 2))
+	if rar >= 4:
+		for sx in [-1.0, 1.0]:
+			var w := _b(_gear, Vector3(0.36, 0.08, 0.2), Vector3(sx * 0.42, 1.96, 0.02), rc, 1.6, Vector3(0, 0, sx * 0.5))
+			_pulse_parts.append(w)
+
+func _worn_armor(c: Color, rc: Color, rar: int, v: int) -> void:
+	_b(_gear, Vector3(0.68, 0.5, 0.4), Vector3(0, 1.08, 0), c).material_override = VCMats.solid(c, 0.0, false, "plate")
+	_b(_gear, Vector3(0.22, 0.22, 0.05), Vector3(0, 1.12, -0.22), rc, 0.6 + 0.4 * float(rar), Vector3(0, 0, PI * 0.25))   # chest emblem
+	if rar >= 1:
+		for sx in [-1.0, 1.0]:
+			_b(_gear, Vector3(0.4, 0.18, 0.44), Vector3(sx * 0.46, 1.42, 0), c * 1.1)          # pauldrons
+	match v:
+		0:   # tassets
+			for sx in [-1.0, 1.0]:
+				_b(_gear, Vector3(0.24, 0.3, 0.06), Vector3(sx * 0.17, 0.52, -0.2), c * 0.9)
+		1:   # shoulder spikes
+			for sx in [-1.0, 1.0]:
+				_b(_gear, Vector3(0.08, 0.26, 0.08), Vector3(sx * 0.5, 1.64, 0), Color(0.85, 0.85, 0.9), 0.0, Vector3(0, 0, -sx * 0.3))
+		2:   # fur collar
+			_b(_gear, Vector3(0.78, 0.14, 0.5), Vector3(0, 1.4, 0), Color(0.82, 0.78, 0.7), 0.0, Vector3.ZERO).material_override = VCMats.solid(Color(0.82, 0.78, 0.7), 0.0, false, "fur")
+		3:   # tabard + sash
+			_b(_gear, Vector3(0.7, 0.08, 0.44), Vector3(0, 1.3, 0), rc, 0.5, Vector3(0, 0, 0.3))
+	if rar >= 3:
+		_b(_gear, Vector3(0.72, 0.04, 0.44), Vector3(0, 0.84, 0), rc, 1.4)                      # glowing waist trim
+		for sx in [-1.0, 1.0]:
+			_pulse_parts.append(_b(_gear, Vector3(0.44, 0.04, 0.48), Vector3(sx * 0.46, 1.52, 0), rc, 1.4))
+
+func _worn_boots(c: Color, rc: Color, rar: int, v: int) -> void:
+	for sx in [-1.0, 1.0]:
+		var leg: Node3D = player.get("_leg_l") if sx < 0 else player.get("_leg_r")
+		if leg == null:
+			continue
+		var sh := VCMats.part(leg, Vector3(0.3, 0.3, 0.3), Vector3(0, -0.38, 0), c * 1.05, 0.0, "", "plate")
+		_leg_parts.append(sh)
+		var toe := VCMats.part(leg, Vector3(0.3, 0.1, 0.14), Vector3(0, -0.6, -0.26), c * 0.85, 0.0, "", "plate")
+		_leg_parts.append(toe)
+		if v == 0 or v == 3:   # winged / spiked
+			var w := VCMats.part(leg, Vector3(0.04, 0.2, 0.3), Vector3(sx * 0.17, -0.45, 0.1), Color(0.95, 0.95, 1.0), 0.6 if v == 3 else 0.0)
+			w.rotation.z = sx * 0.4
+			_leg_parts.append(w)
+		else:
+			_leg_parts.append(VCMats.part(leg, Vector3(0.32, 0.06, 0.32), Vector3(0, -0.24, 0), rc, 0.8 if rar >= 2 else 0.0))
+		if rar >= 3:
+			_leg_parts.append(VCMats.part(leg, Vector3(0.32, 0.04, 0.32), Vector3(0, -0.52, 0), rc, 1.6))
+
+func _worn_trinket(c: Color, rc: Color, rar: int, v: int) -> void:
+	# a pendant on the chest and, for better rarities, a charm that floats beside the hero
+	_b(_gear, Vector3(0.08, 0.3, 0.04), Vector3(0, 1.28, -0.2), Color(0.8, 0.75, 0.4))
+	var gem := _b(_gear, Vector3(0.16, 0.16, 0.06), Vector3(0, 1.1, -0.22), c.lerp(rc, 0.4), 1.2 + 0.4 * float(rar), Vector3(0, 0, PI * 0.25))
+	_pulse_parts.append(gem)
+	if rar >= 2:
+		var orb := _b(_aura, Vector3(0.14, 0.14, 0.14), Vector3(0.6, 1.2, 0), rc, 2.0, Vector3(0.5, 0.5, 0))
+		_orbiters.append({"node": orb, "r": 0.75, "h": 1.0 + 0.1 * float(v), "speed": 1.4 + 0.2 * float(v), "phase": float(v), "bob": 0.1})
+		_spinners.append(orb)

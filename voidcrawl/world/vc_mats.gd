@@ -25,8 +25,10 @@ static func stone_texture() -> ImageTexture:
 	return _tex
 
 ## Opaque lit material. emissive > 0 makes it self-lit (crystals, flames).
-static func solid(color: Color, emissive: float = 0.0, textured: bool = false) -> StandardMaterial3D:
-	var key := "s%s_%s_%s" % [color.to_html(), emissive, textured]
+static func solid(color: Color, emissive: float = 0.0, textured: bool = false, style: String = "") -> StandardMaterial3D:
+	if style == "" and not textured:
+		style = VCTex.auto_style(color, emissive)
+	var key := "s%s_%s_%s_%s" % [color.to_html(), emissive, textured, style]
 	if _mats.has(key):
 		return _mats[key]
 	var m := StandardMaterial3D.new()
@@ -37,6 +39,9 @@ static func solid(color: Color, emissive: float = 0.0, textured: bool = false) -
 	if textured:
 		m.albedo_texture = stone_texture()
 		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	elif style != "none":
+		m.albedo_texture = VCTex.texture(style)
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
 	if emissive > 0.0:
 		m.emission_enabled = true
 		m.emission = color
@@ -94,14 +99,56 @@ static func flash_overlay() -> StandardMaterial3D:
 	_mats["flash"] = m
 	return m
 
-static func box(size: Vector3) -> BoxMesh:
+## Box with per-face UVs sized in world units, so detail textures keep a constant texel size on every part.
+static func box(size: Vector3) -> Mesh:
 	var key := "b%s" % size
 	if _meshes.has(key):
 		return _meshes[key]
-	var b := BoxMesh.new()
-	b.size = size
-	_meshes[key] = b
-	return b
+	var h := size * 0.5
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	var idx := PackedInt32Array()
+	var k := 2.0    # one 16px tile per 0.5 units
+	# each face: normal, u axis, v axis, and half extents along them
+	var faces := [
+		[Vector3.RIGHT, Vector3.BACK, Vector3.UP, h.z, h.y, h.x],
+		[Vector3.LEFT, Vector3.FORWARD, Vector3.UP, h.z, h.y, h.x],
+		[Vector3.UP, Vector3.RIGHT, Vector3.BACK, h.x, h.z, h.y],
+		[Vector3.DOWN, Vector3.RIGHT, Vector3.FORWARD, h.x, h.z, h.y],
+		[Vector3.BACK, Vector3.LEFT, Vector3.UP, h.x, h.y, h.z],
+		[Vector3.FORWARD, Vector3.RIGHT, Vector3.UP, h.x, h.y, h.z],
+	]
+	for f in faces:
+		var n: Vector3 = f[0]
+		var u: Vector3 = f[1]
+		var v: Vector3 = f[2]
+		var hu: float = f[3]
+		var hv: float = f[4]
+		var hn: float = f[5]
+		var base := verts.size()
+		var c := n * hn
+		for q in [[-1, -1], [1, -1], [1, 1], [-1, 1]]:
+			verts.append(c + u * hu * float(q[0]) + v * hv * float(q[1]))
+			norms.append(n)
+			uvs.append(Vector2((float(q[0]) * hu + hu) * k, (hv - float(q[1]) * hv) * k))
+		# winding so the face points along its normal
+		var a := verts[base + 1] - verts[base]
+		var b := verts[base + 2] - verts[base]
+		if a.cross(b).dot(n) > 0.0:
+			idx.append_array([base, base + 1, base + 2, base, base + 2, base + 3])
+		else:
+			idx.append_array([base, base + 2, base + 1, base, base + 3, base + 2])
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = verts
+	arr[Mesh.ARRAY_NORMAL] = norms
+	arr[Mesh.ARRAY_TEX_UV] = uvs
+	arr[Mesh.ARRAY_INDEX] = idx
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	_meshes[key] = m
+	return m
 
 static func quad(size: Vector2) -> PlaneMesh:
 	var key := "q%s" % size
@@ -113,10 +160,10 @@ static func quad(size: Vector2) -> PlaneMesh:
 	return p
 
 ## Add a coloured box part to a parent. Returns the MeshInstance3D.
-static func part(parent: Node3D, size: Vector3, pos: Vector3, color: Color, emissive: float = 0.0, node_name: String = "") -> MeshInstance3D:
+static func part(parent: Node3D, size: Vector3, pos: Vector3, color: Color, emissive: float = 0.0, node_name: String = "", style: String = "") -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = box(size)
-	mi.material_override = solid(color, emissive)
+	mi.material_override = solid(color, emissive, false, style)
 	mi.position = pos
 	if node_name != "":
 		mi.name = node_name

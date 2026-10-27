@@ -39,3 +39,23 @@ func setup(title: String, title_color: Color, subtitle: String, lines: Array, bu
 		var btn := VCUI.button(String(b[0]), Vector2(560, 66), 26)
 		btn.pressed.connect(b[1])
 		v.add_child(btn)
+	_animate_in(dim, panel, t, v)
+
+## Card pops in, title slams down, stat lines slide in one by one.
+func _animate_in(dim: ColorRect, panel: Control, title: Label, v: VBoxContainer) -> void:
+	dim.modulate.a = 0.0
+	panel.modulate.a = 0.0
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(dim, "modulate:a", 1.0, 0.35)
+	tw.tween_property(panel, "modulate:a", 1.0, 0.3)
+	panel.resized.connect(func(): panel.pivot_offset = panel.size * 0.5)
+	panel.scale = Vector2(0.86, 0.86)
+	tw.tween_property(panel, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	title.modulate.a = 0.0
+	tw.tween_property(title, "modulate:a", 1.0, 0.25).set_delay(0.2)
+	var i := 0
+	for ch in v.get_children():
+		if ch is HBoxContainer:
+			ch.modulate.a = 0.0
+			tw.tween_property(ch, "modulate:a", 1.0, 0.25).set_delay(0.45 + 0.12 * float(i))
+			i += 1

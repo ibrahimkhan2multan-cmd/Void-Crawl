@@ -79,6 +79,7 @@ var _light: OmniLight3D
 var armor_fx: VCArmorFx = null
 var _fs_t := 0.0        # friendship-sword sparkle timer
 var _fs_orbs: Array = []
+var _dust_t := 0.0
 var _pose_t := 0.0      # victory / level-up pose timer
 var _pose_kind := ""
 
@@ -473,6 +474,8 @@ func _do_attack_hit() -> void:
 		hits += 1
 	if hits > 0:
 		world.camera_shake(0.12 + 0.05 * float(combo % 3))
+		if combo % 3 == 2:
+			world.fx.ring(global_position, reach * 0.9, slash_col, 0.25)
 
 func _targets_in_cone(reach: float, arc_deg: float) -> Array:
 	var out: Array = []
@@ -767,6 +770,11 @@ func _animate(delta: float, mv: Vector2) -> void:
 			_arm_r.rotation.x = swing * 0.8 - 0.2
 			_arm_r.rotation.z = lerpf(_arm_r.rotation.z, 0.0, 0.2)
 	_cape.rotation.x = -0.1 - run * 0.35 + sin(_anim_t * 4.0) * 0.03
+	if run > 0.7 and state == S.IDLE:
+		_dust_t -= delta
+		if _dust_t <= 0.0:
+			_dust_t = 0.22
+			world.fx.burst(global_position + Vector3(0, 0.08, 0), Color(0.6, 0.55, 0.7), 2, 1.2, 0.5)
 	if armor_fx != null:
 		armor_fx.tick(delta, run)
 	_tick_friend_sword(delta)

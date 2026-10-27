@@ -233,6 +233,7 @@ func _after_player_setup(q: Dictionary) -> void:
 	await _step(1.0, "Enter the void.")
 	_loader.queue_free()
 	_loader = null
+	hud.screen_flash(Color.BLACK, 1.0)
 	build_done = true
 	VCCrashGuard.stage("playing")
 	VC.play_music("dungeon")
@@ -438,6 +439,17 @@ func on_player_hit(target: Node, dealt: float, crit: bool) -> void:
 	play_sfx("crit" if crit else "hit", -2.0, randf_range(0.92, 1.1))
 	fx.burst(target.global_position + Vector3(0, 1.0, 0), Color(0.85, 0.6, 1.0), 12 if crit else 6, 4.0, 0.9)
 	VC.vibrate(18 if crit else 8)
+	if crit:
+		_hit_stop(0.05)
+
+## Tiny freeze-frame that makes big hits feel heavy. Never fights a cinematic over time scale.
+func _hit_stop(real_sec: float) -> void:
+	if fast_build or _cutscene > 0.0 or not is_equal_approx(Engine.time_scale, 1.0):
+		return
+	Engine.time_scale = 0.08
+	await get_tree().create_timer(real_sec, true, false, true).timeout
+	if is_equal_approx(Engine.time_scale, 0.08):
+		Engine.time_scale = 1.0
 
 func on_player_hurt(_dmg: float) -> void:
 	hud.flash_damage()
@@ -764,6 +776,11 @@ func _drop_item(pos: Vector3, it: Dictionary) -> void:
 	pickups.append(p)
 	if int(it["rarity"]) >= VCDefs.Rarity.RARE:
 		play_sfx("pickup", -2.0, 0.8)
+		var bc: Color = VCDefs.rarity_color(int(it["rarity"]))
+		if VCSets.set_of(it) != "" and VCSets.DEFS.has(VCSets.set_of(it)):
+			bc = VCSets.DEFS[VCSets.set_of(it)]["glow"]
+			fx.ring(pos, 2.2, bc, 0.6)
+		fx.spawn_pillar(pos, 1.6 if VCSets.set_of(it) != "" else 1.0, bc, 1.3, 0.35)
 
 func _drop_bomb(pos: Vector3) -> void:
 	var p := VCPickup.new()

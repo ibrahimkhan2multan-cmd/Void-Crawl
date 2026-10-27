@@ -179,29 +179,36 @@ func _build_detail(dv: VBoxContainer) -> void:
 		dv.add_child(VCUI.label("Tap gear in your backpack to compare it with what you are wearing. Equipping really changes your combat stats.", 18, VCDefs.COL_TEXT_DIM))
 		_autowrap_last(dv)
 		return
+	# description area scrolls so long text never pushes EQUIP / SELL off the screen
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.custom_minimum_size = Vector2(0, 120)
+	dv.add_child(scroll)
+	var info := VCUI.vbox(6)
+	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(info)
 	var rc := VCDefs.rarity_color(int(it["rarity"]))
 	var nm := VCUI.label(String(it["name"]), 26, rc)
 	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dv.add_child(nm)
-	dv.add_child(VCUI.label("%s  -  %s  -  item level %d" % [VCDefs.rarity_name(int(it["rarity"])), VCDefs.SLOT_NAMES[int(it["slot"])], int(it["ilvl"])], 16, VCDefs.COL_TEXT_DIM))
+	info.add_child(nm)
+	info.add_child(VCUI.label("%s  -  %s  -  item level %d" % [VCDefs.rarity_name(int(it["rarity"])), VCDefs.SLOT_NAMES[int(it["slot"])], int(it["ilvl"])], 16, VCDefs.COL_TEXT_DIM))
 	for line in VCItems.describe(it):
-		dv.add_child(VCUI.label(String(line), 19, VCDefs.COL_TEXT))
-	_add_set_info(dv, it)
+		info.add_child(VCUI.label(String(line), 19, VCDefs.COL_TEXT))
+	_add_set_info(info, it)
 	if _sel["src"] == "inv":
-		dv.add_child(VCUI.spacer(4))
-		dv.add_child(VCUI.label("IF YOU EQUIP IT", 16, VCDefs.COL_VIOLET))
+		info.add_child(VCUI.spacer(4))
+		info.add_child(VCUI.label("IF YOU EQUIP IT", 16, VCDefs.COL_VIOLET))
 		var now := p.derived()
 		var nxt := p.preview_derived(it)
-		_cmp(dv, "Damage / hit", _avg_hit(now), _avg_hit(nxt), "%.0f")
-		_cmp(dv, "Damage / sec", VCProfile.dps_of(now), VCProfile.dps_of(nxt), "%.1f")
-		_cmp(dv, "Max health", float(now["max_hp"]), float(nxt["max_hp"]), "%.0f")
-		_cmp(dv, "Armor", float(now["armor"]), float(nxt["armor"]), "%.1f")
-		_cmp(dv, "Crit chance", float(now["crit"]) * 100.0, float(nxt["crit"]) * 100.0, "%.0f%%")
-		_cmp(dv, "Move speed", float(now["move_speed"]), float(nxt["move_speed"]), "%.2f")
-		_cmp(dv, "Cooldown mult", float(now["cd_mult"]) * 100.0, float(nxt["cd_mult"]) * 100.0, "%.0f%%", true)
-	var sp := Control.new()
-	sp.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	dv.add_child(sp)
+		_cmp(info, "Damage / hit", _avg_hit(now), _avg_hit(nxt), "%.0f")
+		_cmp(info, "Damage / sec", VCProfile.dps_of(now), VCProfile.dps_of(nxt), "%.1f")
+		_cmp(info, "Max health", float(now["max_hp"]), float(nxt["max_hp"]), "%.0f")
+		_cmp(info, "Armor", float(now["armor"]), float(nxt["armor"]), "%.1f")
+		_cmp(info, "Crit chance", float(now["crit"]) * 100.0, float(nxt["crit"]) * 100.0, "%.0f%%")
+		_cmp(info, "Move speed", float(now["move_speed"]), float(nxt["move_speed"]), "%.2f")
+		_cmp(info, "Cooldown mult", float(now["cd_mult"]) * 100.0, float(nxt["cd_mult"]) * 100.0, "%.0f%%", true)
 	var bh := VCUI.hbox(10)
 	dv.add_child(bh)
 	if _sel["src"] == "inv":

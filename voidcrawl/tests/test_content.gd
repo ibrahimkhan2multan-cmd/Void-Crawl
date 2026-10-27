@@ -14,6 +14,7 @@ static func run(t: Node) -> void:
 	await _forge_and_delve(t)
 	await _frost(t)
 	await _sets(t)
+	await _polish(t)
 	await safe_mode(t)
 
 static func _items(t: Node) -> void:
@@ -512,4 +513,44 @@ static func _sets(t: Node) -> void:
 	await t.get_tree().process_frame
 	Engine.time_scale = 1.0
 	t.check("leaving a mission restores time scale", is_equal_approx(Engine.time_scale, 1.0))
+	VC.new_game()
+
+
+static func _polish(t: Node) -> void:
+	t.section("content: loading screen, result card, scrolling item details")
+	var lo := VCLoadingOverlay.new()
+	t.add_child(lo)
+	await t.get_tree().process_frame
+	lo.set_progress(0.4, "Placing treasure...")
+	for i in 30:
+		await t.get_tree().process_frame
+	t.check("loading overlay animates and keeps its status text", lo.status.text.begins_with("Placing treasure") and lo._t > 0.0)
+	lo.queue_free()
+	var rs := VCResultScreen.new()
+	t.add_child(rs)
+	rs.setup("MISSION COMPLETE", Color.GOLD, "Test", [["Time", "1m"], ["Coins", "+5"]], [["OK", func(): pass]])
+	for i in 60:
+		await t.get_tree().process_frame
+	t.check("result card builds and animates in", rs.get_child_count() >= 2)
+	rs.queue_free()
+	# inventory detail has a ScrollContainer and the buttons stay outside it
+	VC.new_game()
+	var p: VCProfile = VC.profile
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4
+	p.add_item(VCSets.make_piece(rng, "friendship", 6, VCDefs.Rarity.LEGENDARY, VCDefs.Slot.ARMOR, p.alloc_uid()))
+	var inv := VCInventoryScreen.new()
+	t.add_child(inv)
+	await t.get_tree().process_frame
+	inv._sel = {"src": "inv", "i": p.inventory.size() - 1}
+	inv.refresh()
+	await t.get_tree().process_frame
+	var scrolls := inv.find_children("*", "ScrollContainer", true, false)
+	var buttons := inv.find_children("*", "Button", true, false)
+	var has_equip := false
+	for b in buttons:
+		if (b as Button).text == "EQUIP":
+			has_equip = true
+	t.check("item detail scrolls and EQUIP button is present", scrolls.size() >= 2 and has_equip)
+	inv.queue_free()
 	VC.new_game()

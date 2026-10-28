@@ -16,6 +16,7 @@ static func run(t: Node) -> void:
 	await _sets(t)
 	await _polish(t)
 	await _mods(t)
+	await _mods2(t)
 	await safe_mode(t)
 
 static func _items(t: Node) -> void:
@@ -555,6 +556,195 @@ static func _polish(t: Node) -> void:
 	t.check("item detail scrolls and EQUIP button is present", scrolls.size() >= 2 and has_equip)
 	inv.queue_free()
 	VC.new_game()
+
+static func _zip_pack(path: String, files: Dictionary) -> PackedByteArray:
+	var z := ZIPPacker.new()
+	z.open(path)
+	for fn in files:
+		z.start_file(String(fn))
+		z.write_file(JSON.stringify(files[fn]).to_utf8_buffer())
+		z.close_file()
+	z.close()
+	return FileAccess.get_file_as_bytes(path)
+
+static func _mods2(t: Node) -> void:
+	t.section("content: mods (mobs, levels, perks, buttons, menus)")
+	VCMods.remove("sunfire")
+	var base_mobs := VCEnemyDefs.DEFS.size()
+	var base_missions := VCMissions.DATA.size()
+	var base_perks := VCPerks.DEFS.size()
+	var r := VCMods.install_example()
+	t.check("example mod (v2) installs", bool(r["ok"]), String(r["msg"]))
+	t.check("mobs join the game", VCEnemyDefs.DEFS.size() == base_mobs + 2 and VCEnemyDefs.DEFS.has("sunfire__sun_wisp") and String(VCEnemyDefs.DEFS["sunfire__sun_wisp"]["model"]) == "wisp")
+	t.check("level joins the dungeon list", VCMissions.DATA.size() == base_missions + 1 and VCMissions.ORDER.has("sunfire__sunken_furnace") and String(VCMissions.DATA["sunfire__sunken_furnace"]["unlock"]) == "forge")
+	t.check("perks join the game", VCPerks.DEFS.size() == base_perks + 2)
+	t.check("menu buttons registered per screen", VCMods.menu_buttons("main").size() == 2 and VCMods.menu_buttons("pause").size() == 1)
+	t.check("menu windows registered", not VCMods.menu_def("sunfire__hub").is_empty() and not VCMods.menu_def("sunfire__lore").is_empty())
+	t.check("mod set drops from the mod level", String(VCSets.DEFS["sunfire__sunborn"]["mission"]) == "sunfire__sunken_furnace")
+	# --- dungeon generation with the mod level
+	var gen_ok := true
+	var mods_seen := 0
+	for sd in range(1, 31):
+		var d := VCDungeonGenerator.generate(sd * 13, "sunfire__sunken_furnace")
+		var vr := VCDungeonValidator.validate(d, 0)
+		if not vr["ok"]:
+			gen_ok = false
+			print("  mod level seed ", sd * 13, " ", vr["errors"])
+	t.check("mod level generates valid dungeons (30 seeds)", gen_ok)
+	var pool := VCDungeonGenerator._enemy_pool(3, "ember", "sunfire__sunken_furnace")
+	var ids: Array = []
+	for e in pool:
+		ids.append(String(e[0]))
+	t.check("level's own mobs are in its pool", ids.has("sunfire__ember_knight") and ids.has("sunfire__sun_wisp"))
+	var forge_ids: Array = []
+	for e in VCDungeonGenerator._enemy_pool(1, "ember", "forge"):
+		forge_ids.append(String(e[0]))
+	t.check("mob spawn rules add to the base forge pool but a level-only mob does not", forge_ids.has("sunfire__sun_wisp") and not forge_ids.has("sunfire__ember_knight"))
+	var crypt_ids: Array = []
+	for e in VCDungeonGenerator._enemy_pool(3, "crypt", "crypt"):
+		crypt_ids.append(String(e[0]))
+	t.check("crypt pool is untouched", not crypt_ids.has("sunfire__sun_wisp"))
+	# --- a mod mob builds and behaves like its model
+	var en := VCEnemy.new()
+	en.setup("sunfire__ember_knight", 3, 0)
+	t.add_child(en)
+	await t.get_tree().process_frame
+	t.check("mod mob builds a rig with its own name and stats", en.rig != null and en.display_name == "Ember Knight" and en.max_hp > 150.0 and en.rig.get_child_count() > 10)
+	en.queue_free()
+	var m: VCMission = await GP._launch(t, "sunfire__sunken_furnace", 31)
+	t.check("mod level launches and the player is in it", m.build_done and m.player != null and m.player.is_alive())
+	var modmob := false
+	for sd in range(1, 11):
+		var dd := VCDungeonGenerator.generate(sd * 7, "sunfire__sunken_furnace")
+		for rm in dd.rooms:
+			var enc: Dictionary = rm.get("encounter", {})
+			for wave in enc.get("waves", []):
+				for sp in wave:
+					if String(sp["type"]).begins_with("sunfire__"):
+						modmob = true
+	t.check("mod mobs are placed in the level's encounters", modmob)
+	m.queue_free()
+	await t.get_tree().process_frame
+	# --- perks
+	VC.new_game()
+	var p: VCProfile = VC.profile
+	p.coins = 5000
+	var dm0 := float(p.derived()["dmg_mult"])
+	t.check("buying a mod perk works", p.buy_perk("sunfire__sunlit") == "" and p.toggle_perk("sunfire__sunlit") == "")
+	t.check("perk raises damage", float(p.derived()["dmg_mult"]) > dm0 + 0.07)
+	t.check("cannot buy twice", p.buy_perk("sunfire__sunlit") != "")
+	for pid in ["iron_skin", "greedy", "vital"]:
+		p.buy_perk(pid)
+	t.check("slots are limited", p.toggle_perk("warm_heart") != "" and p.toggle_perk("iron_skin") == "" and p.toggle_perk("greedy") == "" and p.toggle_perk("vital") != "")
+	var rt := VCProfile.from_dict(JSON.parse_string(JSON.stringify(p.to_dict())))
+	t.check("perks survive save/load", rt.perks_owned.size() == p.perks_owned.size() and rt.perks_active.size() == 3)
+	VCMods.set_enabled("sunfire", false)
+	t.check("perks from a disabled mod are ignored", absf(float(p.derived()["dmg_mult"]) - dm0) < 0.001 and not VCPerks.DEFS.has("sunfire__sunlit"))
+	VCMods.set_enabled("sunfire", true)
+	t.check("they come back when the mod is on", float(p.derived()["dmg_mult"]) > dm0 + 0.07)
+	# --- menu windows
+	var host := Control.new()
+	host.set_anchors_preset(Control.PRESET_FULL_RECT)
+	t.add_child(host)
+	var w := VCModWindow.open_menu(host, VCMods.menu_def("sunfire__hub"), "main")
+	await t.get_tree().process_frame
+	await t.get_tree().process_frame
+	t.check("menu window opens and builds its elements", host.get_child_count() == 1 and w._body.get_child_count() == 7)
+	var txt: Label = w._body.get_child(0)
+	t.check("text tokens fill in live stats", txt.text.contains("Level %d" % VC.profile.level) and not txt.text.contains("{"))
+	t.check("same menu is not opened twice", VCModWindow.open_menu(host, VCMods.menu_def("sunfire__hub"), "main") == w and host.get_child_count() == 1)
+	VCModWindow.run_action(host, {"type": "menu", "menu": "sunfire__lore"}, "main", w)
+	await t.get_tree().process_frame
+	t.check("a button can open another menu", host.get_child_count() == 2)
+	var before := w.position
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	w._bar_input(ev)
+	var mv := InputEventMouseMotion.new()
+	mv.relative = Vector2(-30, 25)
+	w._bar_input(mv)
+	t.check("window drags by its title bar", w.position != before)
+	ev.pressed = false
+	w._bar_input(ev)
+	var moved := w.position
+	w._bar_input(mv)
+	t.check("stops dragging on release", w.position == moved)
+	var vp := w.get_viewport_rect().size
+	ev.pressed = true
+	w._bar_input(ev)
+	mv.relative = Vector2(99999, 99999)
+	w._bar_input(mv)
+	t.check("window cannot be dragged off screen", w.position.x <= vp.x and w.position.y <= vp.y and w.position.x >= 0.0)
+	VCModWindow.run_action(host, {"type": "message", "text": "Hi there", "title": "Note"}, "main")
+	await t.get_tree().process_frame
+	t.check("message action opens a window", host.get_child_count() >= 3)
+	VC.new_game()
+	var gc := VC.profile.coins
+	VCModWindow.run_action(host, {"type": "code", "code": "SUNFIRE"}, "main")
+	t.check("code action redeems the mod's code once", VC.profile.coins > gc and not VC.profile.inventory.is_empty())
+	var inv := VC.profile.inventory.size()
+	VCModWindow.run_action(host, {"type": "code", "code": "SUNFIRE"}, "main")
+	t.check("second press does not give it again", VC.profile.inventory.size() == inv)
+	VCModWindow.run_action(host, {"type": "mission", "mission": "sunfire__sunken_furnace"}, "pause")
+	t.check("dungeons cannot be started from the pause menu", VC.run.is_empty() or String(VC.run.get("mission", "")) != "sunfire__sunken_furnace")
+	host.queue_free()
+	# --- pause menu and main menu show the mod buttons
+	var pm := VCPauseMenu.new()
+	t.add_child(pm)
+	await t.get_tree().process_frame
+	var pause_btns := 0
+	for b in pm.find_children("*", "Button", true, false):
+		if (b as Button).text == "SUNFIRE HUB":
+			pause_btns += 1
+	t.check("pause menu shows the mod button", pause_btns == 1)
+	pm.queue_free()
+	var mm: Node = load("res://voidcrawl/scenes/main_menu.tscn").instantiate()
+	t.add_child(mm)
+	await t.get_tree().process_frame
+	await t.get_tree().process_frame
+	var col: Node = mm.find_child("ModButtons", true, false)
+	t.check("main menu shows the mod buttons", col != null and col.get_child_count() == 3)
+	mm.queue_free()
+	await t.get_tree().process_frame
+	# --- hostile packs: clamped, rejected, never code
+	var wild := _zip_pack("user://wild2.zip", {"mod.json": {"id": "wild2", "name": "Wild2",
+		"mobs": {
+			"giant": {"name": "Giant", "model": "yeti", "hp": 99999999, "dmg": 99999, "speed": 900, "scale": 100, "xp": 999999},
+			"bossy": {"name": "Bossy", "model": "husk", "ai": "boss"},
+			"nomodel": {"name": "Nope", "model": "dragon"}},
+		"levels": {
+			"ok": {"name": "Ok", "cols": 99, "rows": 99, "path_len": 999, "xp": 99999999, "mobs": ["giant"]},
+			"badboss": {"name": "Bad", "boss": "ender_dragon"},
+			"badmob": {"name": "Bad2", "mobs": ["ghost"]}},
+		"perks": {"op": {"name": "Op", "bonus": {"hp": 999999, "atk_pct": 5000}, "cost": 0}, "empty": {"name": "Empty", "bonus": {"bogus": 5}}},
+		"menus": {"m": {"title": "M", "elements": [{"type": "button", "label": "x", "action": {"type": "shell", "cmd": "rm -rf /"}}]},
+			"n": {"title": "N", "elements": [{"type": "button", "label": "x", "action": {"type": "menu", "menu": "missing"}}]},
+			"good": {"title": "Good", "elements": [{"type": "text", "text": "hi"}, {"type": "button", "label": "Go", "action": {"type": "close"}}]}},
+		"buttons": {"b1": {"label": "Ghost", "action": {"type": "menu", "menu": "nothere"}}, "b2": {"label": "Fine", "where": "pause", "action": {"type": "menu", "menu": "good"}}}}})
+	var wr := VCMods.install_bytes(wild)
+	t.check("hostile pack installs with bad entries skipped", bool(wr["ok"]), String(wr["msg"]))
+	var gdef: Dictionary = VCEnemyDefs.DEFS.get("wild2__giant", {})
+	t.check("mob stats are clamped", not gdef.is_empty() and float(gdef["hp"]) <= 900.0 and float(gdef["dmg"]) <= 80.0 and float(gdef["speed"]) <= 7.0 and float(gdef["scale"]) <= 2.4 and int(gdef["xp"]) <= 400 and float(gdef["radius"]) <= 1.4)
+	t.check("boss ai and unknown models are refused", not VCEnemyDefs.DEFS.has("wild2__bossy") and not VCEnemyDefs.DEFS.has("wild2__nomodel"))
+	var lv: Dictionary = VCMissions.DATA.get("wild2__ok", {})
+	t.check("level size/rewards are clamped", not lv.is_empty() and int(lv["cols"]) <= 5 and int(lv["rows"]) <= 5 and int(lv["path_len"]) <= 12 and int(lv["xp"]) <= 8000)
+	t.check("levels with unknown boss/mob are refused", not VCMissions.DATA.has("wild2__badboss") and not VCMissions.DATA.has("wild2__badmob"))
+	t.check("perk bonuses are clamped and empty ones refused", VCPerks.DEFS.has("wild2__op") and float(VCPerks.DEFS["wild2__op"]["bonus"]["hp"]) <= 150.0 and not VCPerks.DEFS.has("wild2__empty") and int(VCPerks.DEFS["wild2__op"]["cost"]) >= 10)
+	t.check("unknown action types and dangling menu links are refused", VCMods.menu_def("wild2__m").is_empty() and VCMods.menu_def("wild2__n").is_empty() and not VCMods.menu_def("wild2__good").is_empty())
+	var wb := VCMods.menu_buttons("pause")
+	var found_fine := false
+	var found_ghost := false
+	for b in VCMods.menu_buttons("main") + wb:
+		if String(b["label"]) == "Fine":
+			found_fine = true
+		if String(b["label"]) == "Ghost":
+			found_ghost = true
+	t.check("buttons with dead links are dropped, good ones kept", found_fine and not found_ghost)
+	VCMods.remove("wild2")
+	VCMods.remove("sunfire")
+	t.check("removing mods restores mobs, dungeons and perks", VCEnemyDefs.DEFS.size() == base_mobs and VCMissions.DATA.size() == base_missions and VCPerks.DEFS.size() == base_perks and VCMods.menu_buttons("main").is_empty())
+	DirAccess.remove_absolute("user://wild2.zip")
 
 static func _mods(t: Node) -> void:
 	t.section("content: mods (zip import)")

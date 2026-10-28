@@ -27,7 +27,7 @@ func _ready() -> void:
 	v.custom_minimum_size = Vector2(720, 0)
 	panel.add_child(v)
 	v.add_child(VCUI.label("MODS", 38, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
-	var hint := VCUI.label("Mods add new weapons, armour, sets and codes. Import a .zip made for VOIDBORN. Mods cannot run code.", 17, VCDefs.COL_TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	var hint := VCUI.label("Mods add weapons, armour, mobs, dungeons, perks, menu buttons and draggable menus. Import a .zip made for VOIDBORN. Mods cannot run code.", 17, VCDefs.COL_TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(680, 0)
 	v.add_child(hint)
@@ -85,7 +85,14 @@ func _card(m: Dictionary) -> Control:
 		d.custom_minimum_size = Vector2(640, 0)
 		v.add_child(d)
 	if ok:
-		v.add_child(VCUI.label("%d items  -  %d sets  -  %d codes" % [int(m["items"]), int(m["sets"]), int(m["codes"])], 16, VCDefs.COL_VIOLET))
+		var bits: Array = []
+		for k in ["items", "sets", "codes", "mobs", "levels", "perks", "buttons", "menus"]:
+			if int(m.get(k, 0)) > 0:
+				bits.append("%d %s" % [int(m[k]), k])
+		var cl := VCUI.label("  -  ".join(bits), 16, VCDefs.COL_VIOLET)
+		cl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cl.custom_minimum_size = Vector2(640, 0)
+		v.add_child(cl)
 	var errs: Array = m["errors"]
 	if not errs.is_empty():
 		var el := VCUI.label(("Problem: " if not ok else "Skipped: ") + String(errs[0]) + (" (+%d more)" % (errs.size() - 1) if errs.size() > 1 else ""), 15, VCDefs.COL_BAD)
@@ -121,7 +128,7 @@ func _remove(id: String) -> void:
 
 func _example() -> void:
 	var r := VCMods.install_example()
-	_say(String(r["msg"]) + ("  Try codes SUNFIRE and SUNBORN." if bool(r["ok"]) else ""), bool(r["ok"]))
+	_say(String(r["msg"]) + ("  Look for the SUNFIRE HUB button on the main menu!" if bool(r["ok"]) else ""), bool(r["ok"]))
 	refresh()
 
 func _import() -> void:

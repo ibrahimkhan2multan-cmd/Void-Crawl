@@ -5,7 +5,7 @@ extends RefCounted
 ##   hp/dmg:    at level 1; scaled by VCEnemyDefs.scale_for_level()
 ##   windup:    seconds of telegraph before the hit lands (the dodge window)
 
-const DEFS := {
+static var DEFS := {
 	"husk": {
 		"name": "Hollow Husk", "ai": "melee", "hp": 44.0, "dmg": 9.0, "speed": 3.1, "radius": 0.45,
 		"xp": 10, "coins": [1, 3], "item_chance": 0.10, "potion_chance": 0.06,

@@ -31,6 +31,17 @@ func _ready() -> void:
 		var b := VCUI.button(String(it[0]), Vector2(380, 58), 26)
 		b.pressed.connect(_pressed.bind(String(it[1])))
 		v.add_child(b)
+	# buttons added by mods (each opens a message or a draggable menu window)
+	var mb := VCMods.menu_buttons("pause")
+	if not mb.is_empty():
+		v.add_child(VCUI.label("FROM MODS", 14, Color(0.6, 0.5, 0.85), HORIZONTAL_ALIGNMENT_CENTER))
+		for bd in mb:
+			var bc: Color = bd["color"]
+			var mbn := VCUI.button(String(bd["label"]), Vector2(380, 50), 22)
+			mbn.add_theme_color_override("font_color", bc.lerp(Color.WHITE, 0.55))
+			mbn.add_theme_stylebox_override("normal", VCUI.box(Color(0.06, 0.035, 0.11, 0.92), bc, 10, 2, 8))
+			mbn.pressed.connect(func(): VCModWindow.run_action(self, bd["action"], "pause", null, String(bd["label"])))
+			v.add_child(mbn)
 
 func _pressed(id: String) -> void:
 	match id:

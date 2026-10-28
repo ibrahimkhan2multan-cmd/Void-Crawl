@@ -11,6 +11,7 @@ var _hero: Node3D
 var _t := 0.0
 var _cam: Camera3D
 var _modal: Control
+var _mod_host: Control
 var _play_btn: Button
 var _mat_cache := {}
 
@@ -20,9 +21,15 @@ func _ready() -> void:
 	_build_backdrop()
 	_build_ui()
 	VC.play_music("menu")
-	_splash()
+	var howto_delay := 1.8
+	if VCIntro.should_play():
+		var intro := VCIntro.new()
+		add_child(intro)
+		howto_delay = VCIntro.LEN + 1.0
+	else:
+		_splash()
 	if not bool(VCSettings.get_value("seen_howto")):
-		get_tree().create_timer(1.8).timeout.connect(func():
+		get_tree().create_timer(howto_delay).timeout.connect(func():
 			if _modal == null and is_inside_tree():
 				_open_howto())
 	if VCCrashGuard.crashed_last_time:
@@ -205,22 +212,26 @@ func _build_ui() -> void:
 	if not OS.has_feature("web"):
 		items.append(["EXIT", "exit"])
 	for it in items:
-		var b := VCUI.button(String(it[0]), Vector2(380, 56), 26)
+		var b := VCUI.button(String(it[0]), Vector2(380, 50), 25)
 		b.pressed.connect(_on_button.bind(String(it[1])))
 		col.add_child(b)
 		if String(it[1]) == "play":
 			_play_btn = b
 	var row2 := VCUI.hbox(10)
 	col.add_child(row2)
-	var hb := VCUI.button("HOW TO PLAY", Vector2(130, 52), 17)
+	var hb := VCUI.button("HOW TO PLAY", Vector2(118, 50), 15)
 	hb.pressed.connect(_on_button.bind("howto"))
 	row2.add_child(hb)
-	var cb2 := VCUI.button("CODES", Vector2(110, 52), 17)
+	var cb2 := VCUI.button("CODES", Vector2(84, 50), 15)
 	cb2.pressed.connect(_on_button.bind("codes"))
 	row2.add_child(cb2)
-	var mb := VCUI.button("MODS", Vector2(120, 52), 17)
+	var mb := VCUI.button("MODS", Vector2(84, 50), 15)
 	mb.pressed.connect(_on_button.bind("mods"))
 	row2.add_child(mb)
+	var pb := VCUI.button("PERKS", Vector2(92, 50), 15)
+	pb.pressed.connect(_on_button.bind("perks"))
+	row2.add_child(pb)
+	_build_mod_buttons()
 	var ver := VCUI.label("%s v%s  -  Infinity Studios" % [VCDefs.GAME_NAME, String(ProjectSettings.get_setting("application/config/version", "0.1.0"))], 16, Color(0.5, 0.45, 0.65))
 	ver.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	_root.add_child(ver)
@@ -230,6 +241,49 @@ func _build_ui() -> void:
 	ver.offset_top = -34
 	ver.offset_right = -14
 	ver.offset_bottom = -8
+	_refresh_info()
+
+## Buttons added by mods: a column in the top-right corner. Actions are data only (see VCModWindow.run_action).
+func _build_mod_buttons() -> void:
+	var old := _root.find_child("ModButtons", true, false)
+	if old != null:
+		old.queue_free()
+	if _mod_host == null:
+		var layer := CanvasLayer.new()
+		layer.layer = 25
+		add_child(layer)
+		_mod_host = Control.new()
+		_mod_host.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_mod_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_mod_host.theme = VCUI.theme()
+		layer.add_child(_mod_host)
+		VCUI.fit_to_viewport(_mod_host)
+	else:
+		for w in _mod_host.get_children():
+			w.queue_free()
+	var defs := VCMods.menu_buttons("main")
+	if defs.is_empty():
+		return
+	var box := VCUI.vbox(8)
+	box.name = "ModButtons"
+	box.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	box.offset_right = -24
+	box.offset_top = 22
+	box.offset_left = -270
+	_root.add_child(box)
+	box.add_child(VCUI.label("FROM MODS", 14, Color(0.6, 0.5, 0.85), HORIZONTAL_ALIGNMENT_RIGHT))
+	for bd in defs:
+		var b := VCUI.button(String(bd["label"]), Vector2(240, 48), 19)
+		var c: Color = bd["color"]
+		b.add_theme_color_override("font_color", c.lerp(Color.WHITE, 0.55))
+		b.add_theme_stylebox_override("normal", VCUI.box(Color(0.06, 0.035, 0.11, 0.92), c, 10, 2, 8))
+		b.pressed.connect(_on_mod_button.bind(bd))
+		box.add_child(b)
+
+func _on_mod_button(bd: Dictionary) -> void:
+	VC.play_sfx("click", -6.0)
+	VCModWindow.run_action(_mod_host, bd["action"], "main", null, String(bd["label"]))
 	_refresh_info()
 
 func _refresh_info() -> void:
@@ -312,6 +366,10 @@ func _on_button(id: String) -> void:
 			var cp := VCCodesPanel.new()
 			cp.closed.connect(_close_modal)
 			_show_modal(cp)
+		"perks":
+			var pp := VCPerksPanel.new()
+			pp.closed.connect(_close_modal)
+			_show_modal(pp)
 		"mods":
 			var mp := VCModsPanel.new()
 			mp.closed.connect(_close_modal)
@@ -321,10 +379,10 @@ func _on_button(id: String) -> void:
 			get_tree().quit()
 
 func _next_mission_id() -> String:
-	for id in VCMissions.ORDER:
+	for id in VCMissions.BASE_ORDER:
 		if not VC.profile.completed.has(id):
 			return id
-	return VCMissions.ORDER[VCMissions.ORDER.size() - 1]
+	return VCMissions.BASE_ORDER[VCMissions.BASE_ORDER.size() - 1]
 
 func _show_modal(c: Control) -> void:
 	_modal = c

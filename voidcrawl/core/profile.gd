@@ -20,6 +20,8 @@ var completed: Array = []            # mission ids
 var stats: Dictionary = {"kills": 0, "deaths": 0, "chests": 0, "bosses": 0, "playtime": 0.0, "items_found": 0}
 var next_uid: int = 1
 var mod_stash: Array = []            # items whose mod is off/missing; restored when it returns
+var perks_owned: Array = []          # perk ids bought
+var perks_active: Array = []         # perk ids slotted (max VCPerks.SLOTS)
 var redeemed: Array = []             # promo codes already used (normalised)
 
 static func new_game() -> VCProfile:
@@ -93,6 +95,35 @@ func unequip(slot: int) -> bool:
 	inventory.append(old)
 	return true
 
+## Buy a perk with coins. Returns "" on success or the reason it failed.
+func buy_perk(id: String) -> String:
+	if not VCPerks.DEFS.has(id):
+		return "That perk is not available."
+	if perks_owned.has(id):
+		return "You already own this perk."
+	var cost := int(VCPerks.DEFS[id]["cost"])
+	if coins < cost:
+		return "Not enough coins (%d needed)." % cost
+	coins -= cost
+	perks_owned.append(id)
+	return ""
+
+## Slot or unslot an owned perk. Returns "" on success or the reason it failed.
+func toggle_perk(id: String) -> String:
+	if not perks_owned.has(id):
+		return "Buy this perk first."
+	if perks_active.has(id):
+		perks_active.erase(id)
+		return ""
+	var live := 0
+	for a in perks_active:
+		if VCPerks.DEFS.has(String(a)):
+			live += 1
+	if live >= VCPerks.SLOTS:
+		return "All %d perk slots are full - unequip one first." % VCPerks.SLOTS
+	perks_active.append(id)
+	return ""
+
 func sell_item(index: int) -> int:
 	if index < 0 or index >= inventory.size():
 		return 0
@@ -104,6 +135,9 @@ func sell_item(index: int) -> int:
 ## All derived combat stats. This is what the Player actually reads.
 func derived() -> Dictionary:
 	var t := VCItems.totals(equipment)
+	var pt := VCPerks.totals(perks_active)
+	for pk in pt:
+		t[pk] = float(t.get(pk, 0.0)) + float(pt[pk])
 	var lvl_b := float(level - 1)
 	var str_ := float(attrs["str"])
 	var vit := float(attrs["vit"])
@@ -189,7 +223,7 @@ func to_dict() -> Dictionary:
 		"level": level, "xp": xp, "attr_points": attr_points, "attrs": attrs.duplicate(),
 		"coins": coins, "potions": potions, "bombs": bombs, "inventory": inventory.duplicate(true),
 		"equipment": eq, "completed": completed.duplicate(), "stats": stats.duplicate(),
-		"next_uid": next_uid, "redeemed": redeemed.duplicate(), "mod_stash": mod_stash.duplicate(true),
+		"next_uid": next_uid, "redeemed": redeemed.duplicate(), "perks_owned": perks_owned.duplicate(), "perks_active": perks_active.duplicate(), "mod_stash": mod_stash.duplicate(true),
 	}
 
 static func from_dict(d: Dictionary) -> VCProfile:
@@ -227,6 +261,12 @@ static func from_dict(d: Dictionary) -> VCProfile:
 	for st_raw in d.get("mod_stash", []):
 		if st_raw is Dictionary and st_raw.has("base") and p.mod_stash.size() < 300:
 			p.mod_stash.append(st_raw)
+	for po in d.get("perks_owned", []):
+		if not p.perks_owned.has(String(po)) and p.perks_owned.size() < 80:
+			p.perks_owned.append(String(po))
+	for pa in d.get("perks_active", []):
+		if p.perks_owned.has(String(pa)) and not p.perks_active.has(String(pa)) and p.perks_active.size() < VCPerks.SLOTS:
+			p.perks_active.append(String(pa))
 	for rc in d.get("redeemed", []):
 		p.redeemed.append(String(rc))
 	p.next_uid = maxi(int(d.get("next_uid", 1)), 1)

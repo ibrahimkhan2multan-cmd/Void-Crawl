@@ -3,9 +3,10 @@ extends RefCounted
 ## Mission definitions. Adding a mission = adding an entry here (plus, optionally, a new
 ## layout/biome in the dungeon generator). The dungeon generator reads these keys.
 
-const ORDER := ["tutorial", "crypt", "forge", "frost", "delve"]
+const BASE_ORDER := ["tutorial", "crypt", "forge", "frost", "delve"]
+static var ORDER := ["tutorial", "crypt", "forge", "frost", "delve"]
 
-const DATA := {
+static var DATA := {
 	"tutorial": {
 		"name": "Initiation",
 		"biome": "Gloomhollow",

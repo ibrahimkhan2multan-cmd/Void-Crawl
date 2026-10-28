@@ -950,10 +950,11 @@ func _boss_type() -> String:
 	return b
 
 func _on_boss_phase(phase: int) -> void:
+	var bn := "The Warden" if _boss_type() == "warden" else String(VCEnemyDefs.get_def(_boss_type())["name"])
 	if phase == 2:
-		hud.banner("PHASE II", "The Warden calls its servants", Color(1.0, 0.7, 1.0), 2.4)
+		hud.banner("PHASE II", "%s calls its servants" % bn, Color(1.0, 0.7, 1.0), 2.4)
 	else:
-		hud.banner("PHASE III", "The Warden's fury awakens", Color(1.0, 0.45, 0.6), 2.4)
+		hud.banner("PHASE III", "%s's fury awakens" % bn, Color(1.0, 0.45, 0.6), 2.4)
 
 func _on_boss_killed(e: VCEnemy) -> void:
 	boss_state = "dead"
@@ -1307,7 +1308,7 @@ func _victory_fx() -> void:
 func _next_mission() -> String:
 	var order: Array = VCMissions.ORDER
 	var i := order.find(mission_id)
-	if i >= 0 and i + 1 < order.size():
+	if i >= 0 and i + 1 < order.size() and VCMissions.is_unlocked(String(order[i + 1]), VC.profile.completed):
 		return String(order[i + 1])
 	return ""
 

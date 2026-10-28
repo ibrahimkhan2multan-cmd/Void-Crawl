@@ -395,7 +395,17 @@ static func _place_wall_lights(d: VCDungeonData, rng: RandomNumberGenerator, r: 
 		else:
 			d.torches.append({"tile": cand[0], "facing": cand[1]})
 
-static func _enemy_pool(depth: int, kind: String = "crypt") -> Array:
+static func _enemy_pool(depth: int, kind: String = "crypt", mission_id: String = "") -> Array:
+	var pool := _base_pool(depth, kind)
+	for extra in VCMods.pool_additions(kind, depth, mission_id):
+		pool.append(extra)
+	if pool.is_empty():
+		pool.append([VCDefs.ENEMY_HUSK, 1.0])
+	return pool
+
+static func _base_pool(depth: int, kind: String) -> Array:
+	if kind == "none":
+		return []
 	if kind == "frost":
 		var fp: Array = [[VCDefs.ENEMY_HUSK, 2.0], [VCDefs.ENEMY_ICEARCHER, 3.0], [VCDefs.ENEMY_SPIDER, 1.5]]
 		if depth >= 1:
@@ -498,7 +508,7 @@ static func _combat_encounter(d: VCDungeonData, rng: RandomNumberGenerator, r: D
 		var wave: Array = []
 		var brutes := 0
 		for t in tiles:
-			var kind := _pick_weighted(rng, _enemy_pool(depth, String(VCMissions.get_mission(d.mission_id).get("pool", "crypt"))))
+			var kind := _pick_weighted(rng, _enemy_pool(depth, String(VCMissions.get_mission(d.mission_id).get("pool", "crypt")), d.mission_id))
 			if kind == VCDefs.ENEMY_BRUTE:
 				if brutes >= (2 if depth >= 5 else 1):
 					kind = VCDefs.ENEMY_HUSK

@@ -395,13 +395,96 @@ static func _place_wall_lights(d: VCDungeonData, rng: RandomNumberGenerator, r: 
 		else:
 			d.torches.append({"tile": cand[0], "facing": cand[1]})
 
-static func _enemy_pool(depth: int, kind: String = "crypt", mission_id: String = "") -> Array:
-	var pool := _base_pool(depth, kind)
+static func _enemy_pool(depth: int, kind: String = "crypt", mission_id: String = "", theme: String = "") -> Array:
+	var pool: Array = []
+	var tp := _theme_pool(theme, depth)
+	if tp.is_empty():
+		pool = _base_pool(depth, kind)
+	elif kind == "mixed":
+		# the Endless Delve: mostly the creatures of this room's surroundings, spiced with the wider mixed pool
+		for e in tp:
+			pool.append([e[0], float(e[1]) * 2.5])
+		for e in _base_pool(depth, kind):
+			pool.append([e[0], float(e[1]) * 0.5])
+	else:
+		pool = tp
 	for extra in VCMods.pool_additions(kind, depth, mission_id):
 		pool.append(extra)
 	if pool.is_empty():
 		pool.append([VCDefs.ENEMY_HUSK, 1.0])
 	return pool
+
+## Creatures that live in each room theme (the room's surroundings decide who attacks you).
+static func _theme_pool(theme: String, depth: int) -> Array:
+	match theme:
+		"crypt":
+			var p: Array = [["husk", 4.0], ["skeleton", 4.0], ["slinger", 2.5]]
+			if depth >= 1:
+				p.append(["gloomhound", 2.0])
+			if depth >= 3:
+				p.append(["brute", 1.5])
+			return p
+		"cavern":
+			var p2: Array = [["cavebat", 4.0], ["spiderling", 3.5], ["slime", 3.0]]
+			if depth >= 2:
+				p2.append(["gloomhound", 2.0])
+			if depth >= 3:
+				p2.append(["brute", 1.5])
+			return p2
+		"ruins":
+			var p3: Array = [["skeleton", 3.0], ["slinger", 2.0], ["shieldbearer", 2.5]]
+			if depth >= 1:
+				p3.append(["specter", 3.0])
+			if depth >= 2:
+				p3.append(["sentinel", 1.6])
+			if depth >= 3:
+				p3.append(["necromancer", 1.2])
+			return p3
+		"overgrown":
+			var p4: Array = [["thornling", 4.0], ["sporecaster", 3.0], ["slime", 2.0]]
+			if depth >= 1:
+				p4.append(["cavebat", 1.5])
+			if depth >= 2:
+				p4.append(["treant", 1.6])
+			return p4
+		"void":
+			var p5: Array = [["wisp", 3.0], ["specter", 3.0], ["voidacolyte", 2.5]]
+			if depth >= 2:
+				p5.append(["necromancer", 1.5])
+			if depth >= 3:
+				p5.append(["brute", 1.5])
+			return p5
+		"ice":
+			var i1: Array = [["frozenhusk", 3.0], ["frostwraith", 2.5], ["frosthound", 3.0], ["icearcher", 2.0]]
+			return i1
+		"glacier":
+			var i2: Array = [["shieldbearer", 3.0], ["icearcher", 3.0], ["frosthound", 2.0], ["frozenhusk", 1.5]]
+			if depth >= 2:
+				i2.append(["yeti", 1.8])
+			return i2
+		"rime":
+			var i3: Array = [["frostwraith", 3.0], ["rimebat", 3.0], ["icearcher", 2.0]]
+			if depth >= 2:
+				i3.append(["yeti", 2.5])
+			if depth >= 3:
+				i3.append(["necromancer", 1.5])
+			return i3
+		"ash":
+			var a1: Array = [["embermite", 4.0], ["charredhusk", 3.0], ["emberhound", 2.5]]
+			return a1
+		"forge":
+			var a2: Array = [["shieldbearer", 3.0], ["cultist", 3.0], ["embermite", 2.0], ["emberhound", 1.5]]
+			if depth >= 3:
+				a2.append(["brute", 1.0])
+			return a2
+		"magma":
+			var a3: Array = [["magmaslug", 3.0], ["cultist", 2.0], ["embermite", 2.0]]
+			if depth >= 2:
+				a3.append(["wisp", 1.5])
+			if depth >= 3:
+				a3.append(["brute", 2.0])
+			return a3
+	return []
 
 static func _base_pool(depth: int, kind: String) -> Array:
 	if kind == "none":
@@ -508,10 +591,10 @@ static func _combat_encounter(d: VCDungeonData, rng: RandomNumberGenerator, r: D
 		var wave: Array = []
 		var brutes := 0
 		for t in tiles:
-			var kind := _pick_weighted(rng, _enemy_pool(depth, String(VCMissions.get_mission(d.mission_id).get("pool", "crypt")), d.mission_id))
-			if kind == VCDefs.ENEMY_BRUTE:
+			var kind := _pick_weighted(rng, _enemy_pool(depth, String(VCMissions.get_mission(d.mission_id).get("pool", "crypt")), d.mission_id, String(r["theme"])))
+			if String(VCEnemyDefs.get_def(kind)["ai"]) == "slam":
 				if brutes >= (2 if depth >= 5 else 1):
-					kind = VCDefs.ENEMY_HUSK
+					kind = String(_theme_pool(String(r["theme"]), 0)[0][0]) if not _theme_pool(String(r["theme"]), 0).is_empty() else VCDefs.ENEMY_HUSK
 				brutes += 1
 			wave.append({"type": kind, "tile": t})
 		waves.append(wave)

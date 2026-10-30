@@ -81,6 +81,20 @@ static var BASES := {
 	"lucky_coin": {"name": "Lucky Coin", "slot": 3, "kind": "trinket", "coin": 25, "color": Color(1.0, 0.85, 0.3)},
 	"ember_charm": {"name": "Ember Charm", "slot": 3, "kind": "trinket", "atk_pct": 6, "color": Color(1.0, 0.5, 0.25)},
 	"void_shard": {"name": "Void Shard", "slot": 3, "kind": "trinket", "cdr": 8, "color": Color(0.75, 0.35, 1.0)},
+	"gg_tassets": {"name": "Gloomguard Tassets", "slot": 5, "kind": "legs", "def": 8, "hp": 18, "speed": -1, "color": Color(0.45, 0.47, 0.66), "set": "gloomguard", "unique": true},
+	"vw_leggings": {"name": "Voidwalker Leggings", "slot": 5, "kind": "legs", "def": 3, "hp": 10, "speed": 5, "cdr": 2, "color": Color(0.4, 0.17, 0.66), "set": "voidwalker", "unique": true},
+	"el_cuisses": {"name": "Emberlord Cuisses", "slot": 5, "kind": "legs", "def": 7, "hp": 16, "atk_pct": 2, "color": Color(0.28, 0.14, 0.12), "set": "emberlord", "unique": true},
+	"fw_legguards": {"name": "Frostwarden Legguards", "slot": 5, "kind": "legs", "def": 7, "hp": 16, "speed": 2, "color": Color(0.62, 0.8, 0.96), "set": "frostwarden", "unique": true},
+	"bf_leggings": {"name": "Leggings of the Bond", "slot": 5, "kind": "legs", "def": 6, "hp": 14, "crit": 2, "speed": 3, "color": Color(0.92, 0.78, 0.34), "set": "friendship", "unique": true},
+	"patched_trousers": {"name": "Patched Trousers", "slot": 5, "kind": "legs", "def": 1, "hp": 4, "color": Color(0.4, 0.33, 0.28)},
+	"leather_leggings": {"name": "Leather Leggings", "slot": 5, "kind": "legs", "def": 3, "hp": 8, "speed": 2, "color": Color(0.5, 0.34, 0.22)},
+	"ringmail_chausses": {"name": "Ringmail Chausses", "slot": 5, "kind": "legs", "def": 6, "hp": 14, "color": Color(0.55, 0.58, 0.64)},
+	"bone_tassets": {"name": "Bone Tassets", "slot": 5, "kind": "legs", "def": 5, "hp": 12, "crit": 2, "color": Color(0.86, 0.83, 0.74)},
+	"plated_cuisses": {"name": "Plated Cuisses", "slot": 5, "kind": "legs", "def": 10, "hp": 22, "speed": -3, "color": Color(0.6, 0.6, 0.7)},
+	"shade_pants": {"name": "Shade Pants", "slot": 5, "kind": "legs", "def": 2, "hp": 8, "crit": 3, "speed": 4, "color": Color(0.26, 0.17, 0.4)},
+	"ember_kilt": {"name": "Ember Kilt", "slot": 5, "kind": "legs", "def": 6, "hp": 12, "atk_pct": 3, "color": Color(0.85, 0.4, 0.22)},
+	"glacier_legguards": {"name": "Glacier Legguards", "slot": 5, "kind": "legs", "def": 8, "hp": 18, "cdr": 3, "color": Color(0.62, 0.8, 0.96)},
+	"void_greaves": {"name": "Void-Etched Greaves", "slot": 5, "kind": "legs", "def": 7, "hp": 15, "regen": 20, "cdr": 2, "color": Color(0.55, 0.28, 0.85)},
 	"leech_ring": {"name": "Leech Ring", "slot": 3, "kind": "trinket", "leech": 2, "color": Color(0.9, 0.2, 0.4)},
 }
 
@@ -103,6 +117,8 @@ const NAME_SUFFIX := {
 	"speed": "of Haste", "leech": "of the Leech", "cdr": "of Echoes", "coin": "of Greed", "regen": "of Renewal",
 }
 const UNCOMMON_PREFIX := ["Sturdy", "Keen", "Tempered", "Polished"]
+const MYTHIC_PREFIX := ["Eternal", "Cataclysm", "Oblivion", "Sovereign", "Ruinbound"]
+const VOIDBORN_PREFIX := ["Voidborn", "Abyssal", "Primordial", "Boundless", "Starforged"]
 
 static func base_ids_for_slot(slot: int) -> Array:
 	var out: Array = []
@@ -119,11 +135,16 @@ static func base_color(item: Dictionary) -> Color:
 static func _level_mult(ilvl: int) -> float:
 	return 1.0 + 0.11 * float(maxi(ilvl, 1) - 1)
 
-static func roll_rarity(rng: RandomNumberGenerator, luck: float = 0.0) -> int:
+## Weighted rarity roll. Mythic / Voidborn only roll once `ilvl` reaches VCDefs.RARITY_MIN_ILVL (deep dungeons).
+static func roll_rarity(rng: RandomNumberGenerator, luck: float = 0.0, ilvl: int = 99) -> int:
 	var total := 0.0
 	var w: Array[float] = []
 	for i in VCDefs.RARITY_WEIGHTS.size():
 		var v: float = VCDefs.RARITY_WEIGHTS[i] * (1.0 + luck * float(i))
+		if ilvl < int(VCDefs.RARITY_MIN_ILVL[i]):
+			v = 0.0
+		elif i >= 5:
+			v *= clampf(0.5 + 0.1 * float(ilvl - int(VCDefs.RARITY_MIN_ILVL[i])), 0.5, 3.0)   # a little more common the deeper you go
 		w.append(v)
 		total += v
 	var r := rng.randf() * total
@@ -133,15 +154,30 @@ static func roll_rarity(rng: RandomNumberGenerator, luck: float = 0.0) -> int:
 			return i
 	return 0
 
+## Rarity of the k-th reward from a boss at the given item level. The first drop is always a strong one.
+static func boss_rarity(rng: RandomNumberGenerator, ilvl: int, k: int) -> int:
+	if k >= 2:
+		return -1
+	var base := VCDefs.Rarity.EPIC if k == 0 else VCDefs.Rarity.RARE
+	if ilvl >= 7 and k == 0:
+		base = VCDefs.Rarity.LEGENDARY if rng.randf() < 0.55 else VCDefs.Rarity.EPIC
+	if ilvl >= 8 and k == 0 and rng.randf() < 0.22:
+		base = VCDefs.Rarity.MYTHIC
+	if ilvl >= 14 and k == 0 and rng.randf() < 0.22:
+		base = VCDefs.Rarity.VOIDBORN
+	if ilvl >= 9 and k == 1 and rng.randf() < 0.4:
+		base = VCDefs.Rarity.EPIC
+	return base
+
 ## Generate an item. rarity/slot = -1 means random.
 static func generate(rng: RandomNumberGenerator, ilvl: int, rarity: int = -1, slot: int = -1, luck: float = 0.0, uid: int = 0, force_base: String = "") -> Dictionary:
 	if rarity < 0:
-		rarity = roll_rarity(rng, luck)
-	rarity = clampi(rarity, 0, 4)
+		rarity = roll_rarity(rng, luck, ilvl)
+	rarity = clampi(rarity, 0, VCDefs.RARITY_MAX)
 	if slot < 0:
 		# weapons slightly more common so upgrades are visible
 		var sr := rng.randf()
-		slot = 0 if sr < 0.27 else (1 if sr < 0.45 else (2 if sr < 0.66 else (3 if sr < 0.83 else 4)))
+		slot = 0 if sr < 0.24 else (1 if sr < 0.39 else (2 if sr < 0.57 else (3 if sr < 0.72 else (4 if sr < 0.85 else 5))))
 	var ids := base_ids_for_slot(slot)
 	var base_id: String = ids[rng.randi_range(0, ids.size() - 1)]
 	if force_base != "" and BASES.has(force_base):
@@ -194,7 +230,12 @@ static func _make_name(rng: RandomNumberGenerator, item: Dictionary, b: Dictiona
 		return base_name
 	if r == VCDefs.Rarity.UNCOMMON:
 		return "%s %s" % [UNCOMMON_PREFIX[rng.randi_range(0, UNCOMMON_PREFIX.size() - 1)], base_name]
-	var nm := "%s %s" % [NAME_PREFIX[rng.randi_range(0, NAME_PREFIX.size() - 1)], base_name]
+	var pre: Array = NAME_PREFIX
+	if r == VCDefs.Rarity.MYTHIC:
+		pre = MYTHIC_PREFIX
+	elif r >= VCDefs.Rarity.VOIDBORN:
+		pre = VOIDBORN_PREFIX
+	var nm := "%s %s" % [pre[rng.randi_range(0, pre.size() - 1)], base_name]
 	if r >= VCDefs.Rarity.EPIC and not item["affixes"].is_empty():
 		var top: Dictionary = item["affixes"][0]
 		nm += " " + String(NAME_SUFFIX.get(top["id"], "of the Void"))
@@ -208,7 +249,7 @@ static func sanitize(raw: Dictionary) -> Dictionary:
 	item["uid"] = int(raw.get("uid", 0))
 	item["base"] = String(raw["base"])
 	item["slot"] = int(BASES[item["base"]]["slot"])
-	item["rarity"] = clampi(int(raw.get("rarity", 0)), 0, 4)
+	item["rarity"] = clampi(int(raw.get("rarity", 0)), 0, VCDefs.RARITY_MAX)
 	item["ilvl"] = maxi(int(raw.get("ilvl", 1)), 1)
 	item["name"] = String(raw.get("name", BASES[item["base"]]["name"]))
 	if raw.has("lore"):
@@ -326,4 +367,4 @@ static func score(item: Dictionary) -> float:
 	return s
 
 static func sell_value(item: Dictionary) -> int:
-	return int(VCDefs.RARITY_SELL[clampi(int(item.get("rarity", 0)), 0, 4)]) + int(item.get("ilvl", 1)) * 2
+	return int(VCDefs.RARITY_SELL[clampi(int(item.get("rarity", 0)), 0, VCDefs.RARITY_MAX)]) + int(item.get("ilvl", 1)) * 2

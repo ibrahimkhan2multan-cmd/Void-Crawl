@@ -14,7 +14,7 @@ const MAX_ITEMS := 120
 const MAX_SETS := 12
 const MAX_CODES := 40
 
-const SLOT_IDS := {"weapon": 0, "helm": 1, "armor": 2, "trinket": 3, "boots": 4}
+const SLOT_IDS := {"weapon": 0, "helm": 1, "armor": 2, "trinket": 3, "boots": 4, "legs": 5}
 const WEAPON_KINDS := ["sword", "axe", "dagger", "bow", "spear", "hammer", "crossbow", "staff"]
 const RANGED_KINDS := ["bow", "crossbow", "staff"]
 const STAT_KEYS := ["def", "hp", "speed", "crit", "atk_pct", "cdr", "leech", "coin", "regen"]
@@ -26,7 +26,7 @@ const MAX_PERKS := 24
 const MAX_BUTTONS := 6
 const MAX_MENUS := 12
 const MAX_ELEMENTS := 30
-const MOB_MODELS := ["husk", "slinger", "spiderling", "wisp", "brute", "shieldbearer", "embermite", "cultist", "necromancer", "frostwraith", "icearcher", "yeti"]
+const MOB_MODELS := ["husk", "slinger", "spiderling", "wisp", "brute", "shieldbearer", "embermite", "cultist", "necromancer", "frostwraith", "icearcher", "yeti", "hound", "bat", "slime"]
 const MOB_AIS := ["melee", "ranged", "dasher", "slam", "swarm", "exploder"]
 const BASE_POOLS := ["crypt", "ember", "frost", "mixed"]
 const BOSSES := ["warden", "colossus", "frostmaw"]
@@ -476,7 +476,7 @@ static func _build_item(id: String, spec: Variant) -> Dictionary:
 		return {"error": "needs a name"}
 	var slot_name := String(s.get("slot", "")).to_lower()
 	if not SLOT_IDS.has(slot_name):
-		return {"error": "slot must be weapon, helm, armor, trinket or boots"}
+		return {"error": "slot must be weapon, helm, armor, legs, trinket or boots"}
 	var slot: int = SLOT_IDS[slot_name]
 	var b := {"name": nm, "slot": slot, "color": _color(s.get("color"), Color(0.8, 0.8, 0.9))}
 	if slot == 0:
@@ -496,7 +496,7 @@ static func _build_item(id: String, spec: Variant) -> Dictionary:
 		b["arc"] = 0.0 if ranged else _num(s.get("arc"), 20.0, 200.0, 110.0)
 		b["ranged"] = ranged
 	else:
-		b["kind"] = String(["", "helm", "armor", "trinket", "boots"][slot])
+		b["kind"] = String(["", "helm", "armor", "trinket", "boots", "legs"][slot])
 	for k in STAT_KEYS:
 		if s.has(k):
 			b[k] = int(_num(s[k], -20 if k == "speed" else 0, 60 if k != "hp" else 200, 0))
@@ -513,12 +513,14 @@ static func _build_set(mid: String, id: String, spec: Variant, items: Dictionary
 		return {"error": "needs a name"}
 	var pcs = s.get("pieces")
 	if not (pcs is Dictionary):
-		return {"error": "needs pieces {helm, armor, boots, trinket}"}
+		return {"error": "needs pieces {helm, armor, boots, trinket, optional legs}"}
 	var full := "%s__%s" % [mid, _clean_id(id)]
 	var pieces := {}
-	for key in ["helm", "armor", "boots", "trinket"]:
+	for key in ["helm", "armor", "legs", "boots", "trinket"]:
 		var lid := _clean_id(String(pcs.get(key, "")))
 		var fid := "%s__%s" % [mid, lid]
+		if key == "legs" and lid == "":
+			continue                      # leggings are optional (older 4-piece sets keep working)
 		if lid == "" or not items.has(fid):
 			return {"error": "piece \"%s\" is missing or invalid" % key}
 		if int(items[fid]["slot"]) != int(SLOT_IDS[key]):
@@ -532,6 +534,7 @@ static func _build_set(mid: String, id: String, spec: Variant, items: Dictionary
 		return {"error": "mission must be empty, one of %s, or a level from this pack" % ", ".join(MISSIONS)}
 	var b2 := _bonus(s.get("b2"))
 	var b4 := _bonus(s.get("b4"))
+	var b5 := _bonus(s.get("b5"))
 	if b2.is_empty() or b4.is_empty():
 		return {"error": "needs b2 and b4 bonuses (e.g. {\"def\": 10})"}
 	for key in pieces:
@@ -541,8 +544,8 @@ static func _build_set(mid: String, id: String, spec: Variant, items: Dictionary
 	return {"set": {
 		"name": nm, "mission": mission,
 		"color": _color(s.get("color"), glow.darkened(0.4)), "glow": glow,
-		"pieces": pieces, "b2": b2, "b4": b4,
-		"t2": _bonus_text(b2), "t4": _bonus_text(b4),
+		"pieces": pieces, "b2": b2, "b4": b4, "b5": b5,
+		"t2": _bonus_text(b2), "t4": _bonus_text(b4), "t5": _bonus_text(b5),
 		"flavor": _clean_text(String(s.get("flavor", "")), 80), "mod": mid,
 	}}
 
@@ -578,7 +581,7 @@ static func _build_code(mid: String, spec: Variant, items: Dictionary) -> Dictio
 		if it is Dictionary:
 			var fid := "%s__%s" % [mid, _clean_id(String(it.get("base", "")))]
 			if items.has(fid) and specs.size() < 8:
-				specs.append({"base": fid, "rarity": int(_num(it.get("rarity"), 0, 4, 2)), "ilvl": int(_num(it.get("ilvl"), 1, 30, 4))})
+				specs.append({"base": fid, "rarity": int(_num(it.get("rarity"), 0, VCDefs.RARITY_MAX, 2)), "ilvl": int(_num(it.get("ilvl"), 1, 30, 4))})
 			else:
 				return {"error": "item \"%s\" is not defined in this pack" % String(it.get("base", ""))}
 	if not specs.is_empty():

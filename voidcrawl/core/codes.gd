@@ -46,13 +46,16 @@ static func redeem(raw: String, p: VCProfile) -> Dictionary:
 	var code := normalise(raw)
 	if code == "":
 		return {"ok": false, "msg": "Type a code first."}
+	if code == "TESTER":
+		VCTester.unlock()
+		return {"ok": true, "msg": "TESTER MENU UNLOCKED\nOpen it with TESTER on the main menu, or the T button / pause menu in a dungeon.\nThis code is not used up."}
 	if not DEFS.has(code):
 		return {"ok": false, "msg": "That code is not valid."}
 	if p.redeemed.has(code):
 		return {"ok": false, "msg": "You already used this code."}
 	var d: Dictionary = DEFS[code]
 	var specs: Array = d.get("items", [])
-	if p.inventory.size() + specs.size() > VCProfile.INV_CAP:
+	if p.inventory.size() + specs.size() > p.inv_cap():
 		return {"ok": false, "msg": "Backpack too full - free up %d slot(s) first." % specs.size()}
 	var got: Array = []
 	for spec in specs:
@@ -65,8 +68,8 @@ static func redeem(raw: String, p: VCProfile) -> Dictionary:
 	if int(d.get("xp", 0)) > 0:
 		p.add_xp(int(d["xp"]))
 	p.attr_points += int(d.get("points", 0))
-	p.potions = clampi(p.potions + int(d.get("potions", 0)), 0, VCProfile.MAX_POTIONS)
-	p.bombs = clampi(p.bombs + int(d.get("bombs", 0)), 0, VCProfile.MAX_BOMBS)
+	p.potions = clampi(p.potions + int(d.get("potions", 0)), 0, p.max_potions())
+	p.bombs = clampi(p.bombs + int(d.get("bombs", 0)), 0, p.max_bombs())
 	p.redeemed.append(code)
 	var lines: Array = [String(d.get("msg", "Code redeemed!"))]
 	if int(d.get("coins", 0)) > 0:

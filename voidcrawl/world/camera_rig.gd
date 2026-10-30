@@ -20,8 +20,8 @@ var _roll := 0.0
 func _ready() -> void:
 	cam = Camera3D.new()
 	cam.fov = 52.0
-	cam.near = 0.3
-	cam.far = 90.0
+	cam.near = 2.5      # camera sits 8-14 m away: a far larger near plane means far better depth precision (less z-fighting on phones)
+	cam.far = 70.0
 	cam.current = true
 	add_child(cam)
 	name = "CameraRig"

@@ -71,6 +71,19 @@ static func button(text: String, min_size: Vector2 = Vector2(220, 64), font: int
 	b.pressed.connect(func(): VC.play_sfx("click", -4.0))
 	return b
 
+## Highlights a tab button as the current one (bright fill + white text) without disabling it.
+static func mark_tab(b: Button, active: bool) -> void:
+	for sb in ["normal", "hover", "pressed", "focus"]:
+		b.remove_theme_stylebox_override(sb)
+	b.remove_theme_color_override("font_color")
+	b.remove_theme_color_override("font_hover_color")
+	if active:
+		var on := box(Color(0.38, 0.18, 0.7, 1.0), Color(0.95, 0.8, 1.0), 10, 3, 16)
+		for sb in ["normal", "hover", "pressed"]:
+			b.add_theme_stylebox_override(sb, on)
+		b.add_theme_color_override("font_color", Color.WHITE)
+		b.add_theme_color_override("font_hover_color", Color.WHITE)
+
 static func panel(bg: Color = Color(0.06, 0.035, 0.11, 0.96), border: Color = Color(0.35, 0.18, 0.62)) -> PanelContainer:
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", box(bg, border, 14, 2, 14))

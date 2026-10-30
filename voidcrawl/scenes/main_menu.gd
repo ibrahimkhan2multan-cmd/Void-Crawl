@@ -231,6 +231,20 @@ func _build_ui() -> void:
 	var pb := VCUI.button("PERKS", Vector2(92, 50), 15)
 	pb.pressed.connect(_on_button.bind("perks"))
 	row2.add_child(pb)
+	var row3 := VCUI.hbox(10)
+	col.add_child(row3)
+	var pe := VCUI.button("PETS", Vector2(185, 50), 16)
+	pe.pressed.connect(_on_button.bind("pets"))
+	row3.add_child(pe)
+	var ub := VCUI.button("UPGRADES", Vector2(185, 50), 16)
+	ub.pressed.connect(_on_button.bind("upgrades"))
+	row3.add_child(ub)
+	var tt := VCUI.button("TESTER", Vector2(380, 46), 16)
+	tt.name = "TesterBtn"
+	tt.add_theme_color_override("font_color", Color(0.4, 1.0, 0.8))
+	tt.pressed.connect(_on_button.bind("tester"))
+	tt.visible = VCTester.unlocked()
+	col.add_child(tt)
 	_build_mod_buttons()
 	var ver := VCUI.label("%s v%s  -  Infinity Studios" % [VCDefs.GAME_NAME, String(ProjectSettings.get_setting("application/config/version", "0.1.0"))], 16, Color(0.5, 0.45, 0.65))
 	ver.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -288,6 +302,9 @@ func _on_mod_button(bd: Dictionary) -> void:
 
 func _refresh_info() -> void:
 	var p: VCProfile = VC.profile
+	var tbn := _root.find_child("TesterBtn", true, false)
+	if tbn != null:
+		tbn.visible = VCTester.unlocked()
 	var info: Label = _root.find_child("Info", true, false)
 	if info != null and p != null:
 		info.text = "Level %d   |   %d coins" % [p.level, p.coins]
@@ -370,6 +387,18 @@ func _on_button(id: String) -> void:
 			var pp := VCPerksPanel.new()
 			pp.closed.connect(_close_modal)
 			_show_modal(pp)
+		"tester":
+			var tw := VCTesterWindow.new()
+			tw.closed.connect(_close_modal)
+			_show_modal(tw)
+		"pets":
+			var pep := VCPetsPanel.new()
+			pep.closed.connect(_close_modal)
+			_show_modal(pep)
+		"upgrades":
+			var upp := VCUpgradesPanel.new()
+			upp.closed.connect(_close_modal)
+			_show_modal(upp)
 		"mods":
 			var mp := VCModsPanel.new()
 			mp.closed.connect(_close_modal)

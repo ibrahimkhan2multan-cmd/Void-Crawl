@@ -1,6 +1,6 @@
 class_name VCPerksPanel
 extends Control
-## Buy perks with coins and slot up to VCPerks.SLOTS of them. Mods can add more perks.
+## Buy perks with coins and slot up to p.perk_slots() of them. Mods can add more perks.
 
 signal closed
 
@@ -56,7 +56,7 @@ func _live_active() -> int:
 
 func refresh() -> void:
 	var p: VCProfile = VC.profile
-	_coins.text = "%d coins   -   %d / %d perk slots used" % [p.coins, _live_active(), VCPerks.SLOTS]
+	_coins.text = "%d coins   -   %d / %d perk slots used" % [p.coins, _live_active(), p.perk_slots()]
 	for c in _list.get_children():
 		c.queue_free()
 	var ids: Array = VCPerks.DEFS.keys()

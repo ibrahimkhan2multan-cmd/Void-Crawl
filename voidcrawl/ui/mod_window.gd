@@ -178,7 +178,7 @@ func _tokens(t: String) -> String:
 			live += 1
 	return t.replace("{coins}", str(p.coins)).replace("{level}", str(p.level)).replace("{kills}", str(int(p.stats.get("kills", 0)))) \
 		.replace("{bosses}", str(int(p.stats.get("bosses", 0)))).replace("{deaths}", str(int(p.stats.get("deaths", 0)))) \
-		.replace("{potions}", str(p.potions)).replace("{bombs}", str(p.bombs)).replace("{perks}", "%d/%d" % [live, VCPerks.SLOTS])
+		.replace("{potions}", str(p.potions)).replace("{bombs}", str(p.bombs)).replace("{perks}", "%d/%d" % [live, p.perk_slots()])
 
 func _pressed(e: Dictionary) -> void:
 	VC.play_sfx("click", -6.0)

@@ -91,7 +91,7 @@ func _build_pack() -> void:
 	_body.add_child(row)
 
 	# equipped column
-	var eqv := VCUI.vbox(5)
+	var eqv := VCUI.vbox(3)
 	eqv.custom_minimum_size = Vector2(250, 0)
 	row.add_child(eqv)
 	eqv.add_child(VCUI.label("EQUIPPED", 20, VCDefs.COL_VIOLET))
@@ -99,7 +99,7 @@ func _build_pack() -> void:
 		var h := VCUI.hbox(8)
 		eqv.add_child(h)
 		var ic := VCItemIcon.new()
-		ic.custom_minimum_size = Vector2(72, 72)
+		ic.custom_minimum_size = Vector2(62, 62)
 		ic.slot_hint = slot
 		var it: Dictionary = p.equipment.get(slot, {})
 		ic.set_item(it)
@@ -125,7 +125,7 @@ func _build_pack() -> void:
 	row.add_child(mid)
 	var hh := VCUI.hbox(10)
 	mid.add_child(hh)
-	hh.add_child(VCUI.label("BACKPACK  %d / %d" % [p.inventory.size(), VCProfile.INV_CAP], 20, VCDefs.COL_VIOLET))
+	hh.add_child(VCUI.label("BACKPACK  %d / %d" % [p.inventory.size(), p.inv_cap()], 20, VCDefs.COL_VIOLET))
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hh.add_child(sp)
@@ -135,6 +135,9 @@ func _build_pack() -> void:
 	var junk_b := VCUI.button("SELL COMMON", Vector2(170, 44), 18)
 	junk_b.pressed.connect(_sell_commons)
 	hh.add_child(junk_b)
+	var auto_b := VCUI.button("AUTO", Vector2(100, 44), 18)
+	auto_b.pressed.connect(_open_auto)
+	hh.add_child(auto_b)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -144,7 +147,7 @@ func _build_pack() -> void:
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
 	scroll.add_child(grid)
-	for i in VCProfile.INV_CAP:
+	for i in p.inv_cap():
 		var ic2 := VCItemIcon.new()
 		ic2.custom_minimum_size = Vector2(78, 78)
 		if i < p.inventory.size():
@@ -221,7 +224,7 @@ func _build_detail(dv: VBoxContainer) -> void:
 		bh.add_child(sell)
 	else:
 		var ue := VCUI.button("UNEQUIP", Vector2(170, 60), 22)
-		ue.disabled = p.inventory.size() >= VCProfile.INV_CAP
+		ue.disabled = p.inventory.size() >= p.inv_cap()
 		ue.pressed.connect(_do_unequip)
 		bh.add_child(ue)
 
@@ -237,7 +240,8 @@ func _add_set_info(dv: VBoxContainer, it: Dictionary) -> void:
 		have += 1 - (1 if VCSets.set_of(cur) == sid else 0)
 	dv.add_child(VCUI.spacer(2))
 	var gcol: Color = d["glow"]
-	dv.add_child(VCUI.label("%s  (%d/4)" % [String(d["name"]), have], 19, gcol))
+	var total_pcs: int = (d["pieces"] as Dictionary).size()
+	dv.add_child(VCUI.label("%s  (%d/%d)" % [String(d["name"]), have, total_pcs], 19, gcol))
 	var l2 := VCUI.label("2 pieces: %s" % String(d["t2"]), 16, gcol if have >= 2 else VCDefs.COL_TEXT_DIM)
 	l2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l2.custom_minimum_size = Vector2(340, 0)
@@ -246,6 +250,11 @@ func _add_set_info(dv: VBoxContainer, it: Dictionary) -> void:
 	l4.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l4.custom_minimum_size = Vector2(340, 0)
 	dv.add_child(l4)
+	if d.has("b5") and not (d["b5"] as Dictionary).is_empty():
+		var l5 := VCUI.label("5 pieces: %s" % String(d.get("t5", "")), 16, gcol if have >= 5 else VCDefs.COL_TEXT_DIM)
+		l5.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l5.custom_minimum_size = Vector2(340, 0)
+		dv.add_child(l5)
 
 func _autowrap_last(dv: VBoxContainer) -> void:
 	var l := dv.get_child(dv.get_child_count() - 1) as Label
@@ -332,6 +341,15 @@ func _sell_commons() -> void:
 		VC.notify_profile_changed()
 		changed.emit("sell")
 	refresh()
+
+func _open_auto() -> void:
+	var up := VCUpgradesPanel.new()
+	up.start_tab = "auto"
+	up.closed.connect(func():
+		up.queue_free()
+		_sel = {}
+		refresh())
+	add_child(up)
 
 func _sort() -> void:
 	var p: VCProfile = VC.profile

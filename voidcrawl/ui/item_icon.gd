@@ -44,6 +44,7 @@ func _draw() -> void:
 			2: kind = "armor"
 			3: kind = "trinket"
 			4: kind = "boots"
+			5: kind = "legs"
 	_draw_glyph(kind, col, rc, has)
 	if badge != "":
 		var f := ThemeDB.fallback_font
@@ -96,6 +97,11 @@ func _draw_glyph(kind: String, col: Color, accent: Color, solid: bool) -> void:
 			draw_colored_polygon(PackedVector2Array([c + Vector2(-k * 0.5, -k * 0.9), c + Vector2(k * 0.3, -k * 0.9), c + Vector2(k * 0.3, k * 0.1), c + Vector2(k * 1.0, k * 0.35), c + Vector2(k * 1.0, k * 0.9), c + Vector2(-k * 0.5, k * 0.9)]), col)
 			draw_rect(Rect2(c + Vector2(-k * 0.5, k * 0.65), Vector2(k * 1.5, k * 0.25)), Color(accent.r, accent.g, accent.b, dim))
 			draw_line(c + Vector2(-k * 0.5, -k * 0.55), c + Vector2(k * 0.3, -k * 0.55), accent, 3.0, true)
+		"legs":
+			draw_colored_polygon(PackedVector2Array([c + Vector2(-k * 0.9, -k * 0.9), c + Vector2(k * 0.9, -k * 0.9), c + Vector2(k * 0.95, k * 0.1), c + Vector2(k * 0.55, k * 1.0), c + Vector2(k * 0.1, k * 1.0), c + Vector2(0, -k * 0.15), c + Vector2(-k * 0.1, k * 1.0), c + Vector2(-k * 0.55, k * 1.0), c + Vector2(-k * 0.95, k * 0.1)]), col)
+			draw_rect(Rect2(c + Vector2(-k * 0.9, -k * 0.9), Vector2(k * 1.8, k * 0.22)), Color(accent.r, accent.g, accent.b, dim))
+			draw_line(c + Vector2(-k * 0.55, k * 0.25), c + Vector2(-k * 0.15, k * 0.25), accent, 3.0, true)
+			draw_line(c + Vector2(k * 0.55, k * 0.25), c + Vector2(k * 0.15, k * 0.25), accent, 3.0, true)
 		"trinket":
 			draw_arc(c, k * 0.9, 0, TAU, 24, Color(0.8, 0.7, 0.4, dim), 4.0, true)
 			draw_colored_polygon(PackedVector2Array([c + Vector2(0, -k * 0.6), c + Vector2(k * 0.5, 0), c + Vector2(0, k * 0.6), c + Vector2(-k * 0.5, 0)]), Color(col.r, col.g, col.b, dim) if solid else col)

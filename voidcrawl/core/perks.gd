@@ -3,7 +3,7 @@ extends RefCounted
 ## Perks: passive bonuses bought with coins and slotted (up to SLOTS at once). Mods can add more.
 ## A perk's "bonus" uses the same stat keys as armour set bonuses (def, hp, speed, crit, atk_pct, ...).
 
-const SLOTS := 3
+const SLOTS := 3                    # base number of slots (upgrades add more: VCProfile.perk_slots())
 
 static var DEFS := {
 	"iron_skin": {"name": "Iron Skin", "desc": "Toughened hide.", "cost": 150, "bonus": {"def": 6}, "color": Color(0.7, 0.75, 0.9)},
@@ -30,11 +30,11 @@ static func bonus_text(id: String) -> String:
 	return ", ".join(parts)
 
 ## Sum of the bonuses of the given perk ids (unknown ids are ignored, e.g. from a disabled mod).
-static func totals(active: Array) -> Dictionary:
+static func totals(active: Array, slots: int = SLOTS) -> Dictionary:
 	var out := {}
 	var n := 0
 	for id in active:
-		if not DEFS.has(String(id)) or n >= SLOTS:
+		if not DEFS.has(String(id)) or n >= slots:
 			continue
 		n += 1
 		var b: Dictionary = DEFS[String(id)]["bonus"]

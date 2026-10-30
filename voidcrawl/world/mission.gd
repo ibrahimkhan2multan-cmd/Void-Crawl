@@ -31,6 +31,8 @@ var fx: VCFx
 var hud: VCHud
 var touch: VCTouchControls
 var enemies: Array = []
+var tester_win: VCTesterWindow = null
+var pets: Array = []                    # VCPet companions
 var breakables: Array = []
 var pickups: Array = []
 var interactables: Array = []
@@ -49,6 +51,8 @@ var elapsed := 0.0
 var overlay_open := ""
 var gained_xp := 0
 var gained_coins := 0
+var _auto_removed := 0
+var _auto_coins := 0
 var gained_items := 0
 var levels_gained := 0
 var broken_ids: Array = []
@@ -218,6 +222,12 @@ func _after_player_setup(q: Dictionary) -> void:
 	_ctl_layer.add_child(touch)
 	touch.pause_pressed.connect(func(): open_overlay("pause"))
 	touch.inventory_pressed.connect(func(): open_overlay("pack"))
+	if VCTester.unlocked():
+		var tbtn := VCUI.button("T", Vector2(52, 52), 22)
+		tbtn.add_theme_color_override("font_color", Color(0.4, 1.0, 0.8))
+		tbtn.position = Vector2(18, 200)
+		tbtn.pressed.connect(func(): toggle_tester())
+		_ctl_layer.add_child(tbtn)
 	VCCrashGuard.stage("restore")
 	await _step(0.8, "Waking the dead...")
 	_restore_run_state()
@@ -225,6 +235,7 @@ func _after_player_setup(q: Dictionary) -> void:
 	await _step(0.85, "Placing treasure...")
 	_spawn_world_objects()
 	_place_player()
+	_spawn_pets()
 	cam_rig.snap_to(player.global_position)
 	cam_rig.yaw = 0.0
 	_update_objectives()
@@ -301,6 +312,26 @@ func _place_player() -> void:
 	hud.reveal(data.world_to_tile(p))
 	_last_room = -2
 
+## (Re)create the hero's active pets next to the hero.
+func _spawn_pets() -> void:
+	for pt in pets:
+		if is_instance_valid(pt):
+			pt.queue_free()
+	pets.clear()
+	var prof: VCProfile = VC.profile
+	var i := 0
+	for id in prof.pets_active:
+		if i >= prof.pet_slots() or not VCPets.SPECIES.has(String(id)) or not prof.pets.has(String(id)):
+			continue
+		var pt := VCPet.new()
+		pt.world = self
+		pt.setup(String(id), int(prof.pets[String(id)]), prof.level, i)
+		_prop_root.add_child(pt)
+		var t := data.nearest_floor(data.world_to_tile(player.global_position) + Vector2i(-1 - i, 1))
+		pt.global_position = data.tile_to_world(t)
+		pets.append(pt)
+		i += 1
+
 func _checkpoint_pos() -> Vector3:
 	var t := data.start_tile
 	if checkpoint_room > 0 and checkpoint_room < data.rooms.size():
@@ -327,22 +358,6 @@ func _spawn_world_objects() -> void:
 			it.used = true
 			it._lid.rotation.x = -1.9
 		interactables.append(it)
-	# shrines (every checkpoint except the entrance)
-	for cp in data.checkpoints:
-		if String(cp["id"]) == "cp_start":
-			continue
-		var sh := VCInteractable.new()
-		sh.world = self
-		sh.id = String(cp["id"])
-		sh.room = int(cp["room"])
-		_prop_root.add_child(sh)
-		sh.build_shrine()
-		sh.position = data.tile_to_world(cp["tile"])
-		sh.activated.connect(_on_shrine_used)
-		if checkpoint_room == sh.room and resumed:
-			sh.used = true
-			sh._set_shrine_glow(true)
-		interactables.append(sh)
 	# exit gate
 	gate = VCInteractable.new()
 	gate.world = self
@@ -596,7 +611,11 @@ func _on_enter_room(rid: int) -> void:
 			else:
 				hud.toast("Treasure vault", VCDefs.COL_COIN)
 		"checkpoint":
-			hud.toast("A quiet shrine glows ahead", Color(0.5, 0.85, 1.0))
+			# the quiet rest room: no structure, you simply get a checkpoint plus a full recovery
+			player.heal(float(player.max_hp), true)
+			VC.profile.potions = VC.profile.max_potions()
+			VC.profile.bombs = maxi(VC.profile.bombs, 3)
+			_set_checkpoint(rid, "Checkpoint saved  -  health and potions restored")
 
 # ----------------------------------------------------------------- encounters
 func _in_room_inner(rid: int, pt: Vector2i) -> bool:
@@ -681,14 +700,25 @@ func _clear_room(rid: int) -> void:
 	var st: Dictionary = rooms_state[rid]
 	st["state"] = "cleared"
 	_set_barriers(rid, false)
-	hud.toast("Room cleared", VCDefs.COL_GOOD)
-	play_sfx("checkpoint", -4.0)
 	VC.profile.coins += 0
 	if not (run.get("cleared", []) as Array).has(rid):
 		if not run.has("cleared"):
 			run["cleared"] = []
 		(run["cleared"] as Array).append(rid)
+	_set_checkpoint(rid, "Room cleared  -  Checkpoint saved")
 	_check_gate_unlock()
+	_save_run()
+
+## Automatic checkpoint: no shrine to find. Called when a room is cleared (and in the rest room).
+func _set_checkpoint(rid: int, text: String) -> void:
+	checkpoint_room = rid
+	play_sfx("checkpoint", -3.0)
+	if player != null:
+		fx.ring(player.global_position, 3.0, Color(0.5, 0.85, 1.0), 0.7)
+	if text.find("restored") >= 0:
+		hud.banner("CHECKPOINT SAVED", "Health and potions restored", Color(0.55, 0.88, 1.0), 2.0)
+	else:
+		hud.toast(text, Color(0.55, 0.88, 1.0), 3.2)
 	_save_run()
 
 func _grant_enemy_rewards(e: VCEnemy) -> void:
@@ -707,9 +737,9 @@ func _grant_enemy_rewards(e: VCEnemy) -> void:
 		for k in count:
 			var rarity := -1
 			if e.is_boss:
-				rarity = VCDefs.Rarity.EPIC if k == 0 else (VCDefs.Rarity.RARE if k == 1 else -1)
+				rarity = VCItems.boss_rarity(_loot_rng, e.level + 1, k)
 			elif String(d["ai"]) == "slam":
-				rarity = maxi(VCDefs.Rarity.UNCOMMON, VCItems.roll_rarity(_loot_rng, 0.3))
+				rarity = maxi(VCDefs.Rarity.UNCOMMON, VCItems.roll_rarity(_loot_rng, 0.3, e.level))
 			var it := VCItems.generate(_loot_rng, e.level + (1 if e.is_boss else 0), rarity, -1, 0.0, VC.profile.alloc_uid())
 			var sid := _mission_set()
 			if sid != "":
@@ -721,6 +751,9 @@ func _grant_enemy_rewards(e: VCEnemy) -> void:
 					if not piece.is_empty():
 						it = piece
 			_drop_item(pos, it)
+	if String(d["ai"]) == "slam" and not e.is_boss and _loot_rng.randf() < 0.04:
+		VC.profile.eggs["common"] = VCPets.egg_count(VC.profile, "common") + 1
+		hud.toast("The creature dropped an egg!", VCPets.EGGS["common"]["color"], 3.0)
 	if _loot_rng.randf() < float(d["potion_chance"]) * 1.6:
 		_drop_potion(pos)
 	if _loot_rng.randf() < (0.35 if String(d["ai"]) == "slam" else 0.05):
@@ -827,17 +860,17 @@ func collect_pickup(p: VCPickup) -> void:
 			play_sfx("coin", -6.0, randf_range(0.95, 1.15))
 			fx.number(p.global_position, "+%d" % p.amount, VCDefs.COL_COIN, false)
 		VCPickup.Kind.POTION:
-			if prof.potions >= VCProfile.MAX_POTIONS:
+			if prof.potions >= prof.max_potions():
 				return                       # leave it on the floor until there is room
 			prof.potions += 1
 			play_sfx("pickup", -3.0)
-			hud.toast("Health potion  (%d/%d)" % [prof.potions, VCProfile.MAX_POTIONS], VCDefs.COL_HP)
+			hud.toast("Health potion  (%d/%d)" % [prof.potions, prof.max_potions()], VCDefs.COL_HP)
 		VCPickup.Kind.BOMB:
-			if prof.bombs >= VCProfile.MAX_BOMBS:
+			if prof.bombs >= prof.max_bombs():
 				return
 			prof.bombs += 1
 			play_sfx("pickup", -3.0, 0.8)
-			hud.toast("Void bomb  (%d/%d)" % [prof.bombs, VCProfile.MAX_BOMBS], Color(1.0, 0.7, 0.35))
+			hud.toast("Void bomb  (%d/%d)" % [prof.bombs, prof.max_bombs()], Color(1.0, 0.7, 0.35))
 		VCPickup.Kind.HEART:
 			if player.hp >= float(player.max_hp) - 0.5:
 				return                       # keep it for when you need it
@@ -846,7 +879,15 @@ func collect_pickup(p: VCPickup) -> void:
 			fx.burst(player.global_position + Vector3(0, 1.0, 0), VCDefs.COL_GOOD, 8, 2.5, 0.8)
 		VCPickup.Kind.ITEM:
 			var it: Dictionary = p.item
-			if prof.add_item(it):
+			if prof.should_auto_remove(it):
+				var av := VCItems.sell_value(it) if prof.auto_mode == "sell" else 0
+				prof.coins += av
+				gained_coins += av
+				prof.stats["items_found"] = int(prof.stats["items_found"]) + 1
+				_auto_removed += 1
+				_auto_coins += av
+				hud.toast("Auto-%s %s%s" % ["sold" if prof.auto_mode == "sell" else "deleted", String(it["name"]), "  +%d" % av if av > 0 else ""], VCDefs.COL_TEXT_DIM, 1.6)
+			elif prof.add_item(it):
 				prof.stats["items_found"] = int(prof.stats["items_found"]) + 1
 				gained_items += 1
 				play_sfx("pickup")
@@ -964,6 +1005,10 @@ func _on_boss_killed(e: VCEnemy) -> void:
 	var bt := _boss_type()
 	var bname := String(VCEnemyDefs.get_def(bt)["name"]).to_upper() if bt != "warden" else String(mission.get("boss_title", "THE HOLLOW WARDEN")).to_upper()
 	hud.banner("%s FALLS" % bname, "The Void Gate stirs...", VCDefs.COL_COIN, 3.5)
+	var egg := VCPets.boss_egg(mission_id, floor_n, _loot_rng)
+	if egg != "":
+		VC.profile.eggs[egg] = VCPets.egg_count(VC.profile, egg) + 1
+		hud.toast("Found a %s!  (open PETS from the main menu to hatch it)" % String(VCPets.EGGS[egg]["name"]), VCPets.EGGS[egg]["color"], 4.5)
 	_set_barriers(boss.room, false)
 	VC.play_music("dungeon")
 	play_sfx("victory")
@@ -1115,7 +1160,7 @@ func _on_chest_opened(ch: VCInteractable) -> void:
 		var n := 3 if ch.tier >= 2 else 2
 		for k in n:
 			var min_r := VCDefs.Rarity.RARE if (ch.tier >= 2 and k == 0) else VCDefs.Rarity.UNCOMMON
-			var rr := maxi(min_r, VCItems.roll_rarity(rng, 0.5))
+			var rr := maxi(min_r, VCItems.roll_rarity(rng, 0.5, lvl))
 			items.append(VCItems.generate(rng, lvl, rr, -1, 0.0, VC.profile.alloc_uid()))
 	VCCrashGuard.stage("chest:items")
 	for it in items:
@@ -1127,18 +1172,6 @@ func _on_chest_opened(ch: VCInteractable) -> void:
 	VCCrashGuard.stage("chest:save")
 	_save_run()
 	VCCrashGuard.stage("chest:done")
-
-func _on_shrine_used(sh: VCInteractable) -> void:
-	var first := checkpoint_room != sh.room
-	checkpoint_room = sh.room
-	player.heal(float(player.max_hp), true)
-	VC.profile.potions = VCProfile.MAX_POTIONS
-	VC.profile.bombs = maxi(VC.profile.bombs, 3)
-	play_sfx("checkpoint")
-	fx.ring(sh.global_position, 3.5, Color(0.5, 0.85, 1.0), 0.8)
-	fx.burst(sh.global_position + Vector3(0, 1.5, 0), Color(0.5, 0.85, 1.0), 20, 4.0, 1.0)
-	hud.toast("Checkpoint reached - health and potions restored" if first else "You rest at the shrine", Color(0.55, 0.88, 1.0))
-	_save_run()
 
 func _on_gate_used(_g: VCInteractable) -> void:
 	if finished or not exit_unlocked:
@@ -1343,7 +1376,7 @@ func _on_player_died() -> void:
 	if finished or _defeat_shown:
 		return
 	_defeat_shown = true
-	var lines: Array = [["Enemies defeated", str(counters["kills"])], ["Checkpoint", "Entrance" if checkpoint_room == 0 else "Shrine"]]
+	var lines: Array = [["Enemies defeated", str(counters["kills"])], ["Checkpoint", "Entrance" if checkpoint_room == 0 else "Last cleared room"]]
 	_show_result("DEFEATED", VCDefs.COL_BAD, "The void is patient.", lines, [["RETRY FROM CHECKPOINT", retry], ["SAVE & MAIN MENU", func(): _quit_to_menu()]])
 
 func retry() -> void:
@@ -1377,6 +1410,11 @@ func retry() -> void:
 	var p := _checkpoint_pos()
 	player.revive_at(p)
 	cam_rig.snap_to(p)
+	for pt in pets:
+		if is_instance_valid(pt):
+			pt.respawn_now()
+			pt.hp = pt.max_hp
+			pt._teleport_to_player()
 	player.god_mode = false
 	hud.toast("Back on your feet", VCDefs.COL_GOOD)
 	_save_run()
@@ -1412,6 +1450,9 @@ func open_overlay(kind: String) -> void:
 			pm.open_settings.connect(func(): _swap_overlay("settings"))
 			pm.open_howto.connect(func(): _swap_overlay("howto"))
 			pm.quit_to_menu.connect(_quit_to_menu)
+			pm.open_tester.connect(func():
+				close_overlay()
+				toggle_tester(true))
 		"pack":
 			var inv := VCInventoryScreen.new()
 			layer.add_child(inv)
@@ -1432,6 +1473,26 @@ func open_overlay(kind: String) -> void:
 		if oc is Control:
 			VCUI.fit_to_viewport(oc)
 	play_sfx("click", -4.0)
+
+## The floating TESTER window (only exists once the TESTER code has been entered). Does not pause the game.
+func toggle_tester(force_open: bool = false) -> void:
+	if not VCTester.unlocked():
+		return
+	if tester_win != null and is_instance_valid(tester_win):
+		if force_open:
+			return
+		tester_win.get_parent().queue_free()
+		tester_win = null
+		return
+	var layer := CanvasLayer.new()
+	layer.layer = 28
+	layer.name = "TesterLayer"
+	add_child(layer)
+	tester_win = VCTesterWindow.new()
+	tester_win.world = self
+	layer.add_child(tester_win)
+	VCUI.fit_to_viewport(tester_win)
+	tester_win.closed.connect(func(): toggle_tester())
 
 func _swap_overlay(kind: String) -> void:
 	_close_overlay_node()

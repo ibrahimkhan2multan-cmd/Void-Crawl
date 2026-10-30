@@ -10,8 +10,8 @@ Everything is validated and clamped; a broken entry is skipped and shown in red 
 
 | File | Adds |
 |---|---|
-| `items.json` | weapons, helms, armour, boots, trinkets |
-| `sets.json` | 4-piece armour sets with 2/4-piece bonuses and auras |
+| `items.json` | weapons, helms, armour, leggings, boots, trinkets |
+| `sets.json` | 4- or 5-piece armour sets (leggings optional) with 2/4/5-piece bonuses and auras |
 | `codes.json` | promo codes that give coins, XP, items |
 | `mobs.json` | **new enemies** (a built-in body reshaped, recoloured and re-tuned) |
 | `levels.json` | **new dungeons** that appear in DUNGEONS, with their own enemies and boss |
@@ -49,7 +49,7 @@ so mods can never overwrite each other or the base game. Inside your own files j
   "solar_boots":   { "name": "Solar Boots", "slot": "boots", "speed": 11, "def": 2, "color": "#ffd24a" }
 }
 ```
-- `slot`: `weapon`, `helm`, `armor`, `trinket`, `boots`
+- `slot`: `weapon`, `helm`, `armor`, `legs`, `trinket`, `boots`
 - weapon `kind`: `sword axe dagger bow spear hammer crossbow staff` (bow, crossbow, staff are ranged)
 - weapon stats: `dmg [min,max]` (1-300), `interval` seconds between hits (0.15-2.5), `range` (1.5-20), `arc` degrees (20-200, melee)
 - other stats (any item): `def hp speed crit atk_pct cdr leech coin regen` (whole numbers, clamped)
@@ -57,16 +57,17 @@ so mods can never overwrite each other or the base game. Inside your own files j
 - `drops`: `true` (default) = can drop as random loot, `false` = only via codes
 
 ## sets.json
-A set needs exactly four pieces, one per slot, defined in the same mod.
+A set needs four pieces (`helm armor boots trinket`), one per slot, defined in the same mod. A fifth piece, `legs`, is optional - add it to make a 5-piece set with a `b5` bonus.
 ```json
 { "sunborn": { "name": "Sunborn Regalia", "mission": "sunken_furnace", "color": "#c98a2a", "glow": "#ffcc55",
     "pieces": { "helm": "sun_helm", "armor": "sun_plate", "boots": "sun_greaves", "trinket": "sun_charm" },
     "b2": { "def": 10, "hp": 20 },
     "b4": { "atk_pct": 14, "kill_heal": 2, "speed": 6 },
+    "b5": { "atk_pct": 8, "hp": 40 },
     "flavor": "Warm as a summer noon." } }
 ```
 - `mission`: where the set drops - `crypt`, `forge`, `frost`, `delve`, **a level from your own pack**, or `""` for codes only
-- `b2` / `b4`: bonuses for 2 / 4 pieces. Keys: `def hp speed crit atk_pct cdr leech coin regen kill_heal nova_pct dodge_wave`
+- `b2` / `b4` / `b5`: bonuses for 2 / 4 / 5 pieces (`b5` only matters if the set has a `legs` piece). Keys: `def hp speed crit atk_pct cdr leech coin regen kill_heal nova_pct dodge_wave`
 - Worn pieces get the game's armour models in your colours; 4 pieces show the hero aura.
 
 ## codes.json
@@ -74,7 +75,7 @@ A set needs exactly four pieces, one per slot, defined in the same mod.
 { "SUNFIRE": { "msg": "The sun answers.", "coins": 200,
                "items": [ { "base": "sunfire_blade", "rarity": 3, "ilvl": 5 } ] } }
 ```
-Rewards: `coins xp points potions bombs` and `items` (rarity 0-4). Each code works once per save. A mod cannot replace a built-in code.
+Rewards: `coins xp points potions bombs` and `items` (rarity 0-6: Common, Uncommon, Rare, Epic, Legendary, Mythic, Voidborn). Each code works once per save. A mod cannot replace a built-in code.
 
 ## mobs.json  (new enemies)
 A mob borrows one of the game's bodies (`model`) so it already has a full animated rig, then you retune and recolour it.
@@ -83,7 +84,7 @@ A mob borrows one of the game's bodies (`model`) so it already has a full animat
                 "hp": 36, "dmg": 12, "speed": 3.8, "scale": 1.0, "xp": 20, "coins": [3, 7],
                 "spawn": [ { "pool": "ember", "weight": 2.0, "depth": 1 } ] } }
 ```
-- `model`: `husk slinger spiderling wisp brute shieldbearer embermite cultist necromancer frostwraith icearcher yeti`
+- `model`: `husk slinger spiderling wisp brute shieldbearer embermite cultist necromancer frostwraith icearcher yeti hound bat slime`
 - `ai` (optional, default = the model's own): `melee ranged dasher slam swarm exploder`. Bosses cannot be made by mods.
 - numbers (clamped): `hp` 10-900, `dmg` 1-80, `speed` 1.2-7, `scale` 0.6-2.4, `xp` 1-400, `coins [min,max]`, `item_chance` 0-0.8, `potion_chance` 0-0.5,
   `windup` 0.25-1.5 (seconds of warning before it hits), `reach` 1-16, `cooldown` 0.5-6. Anything you leave out comes from the model.
@@ -111,7 +112,7 @@ A mob borrows one of the game's bodies (`model`) so it already has a full animat
 The level shows up in **DUNGEONS** after the base ones, and sets with `"mission": "<level id>"` drop there.
 
 ## perks.json
-Perks are passive bonuses bought with coins in **PERKS** (main menu) and slotted - the player can wear 3 at once.
+Perks are passive bonuses bought with coins in **PERKS** (main menu) and slotted - the player starts with 3 slots and can buy more in UPGRADES.
 ```json
 { "sunlit": { "name": "Sunlit Edge", "desc": "Blades gleam with borrowed daylight.", "cost": 260,
               "bonus": { "atk_pct": 8 }, "color": "#ffcc55" } }

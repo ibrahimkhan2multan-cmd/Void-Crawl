@@ -61,6 +61,8 @@ var _leg_l: Node3D
 var _leg_r: Node3D
 var _spin_parts: Array = []
 var _legs8: Array = []
+var _wings: Array = []        # bat wings (flapped in _animate)
+var _squash: Node3D = null    # slime body (squashed in _animate)
 var _eye_mat: Material
 
 func setup(p_type: String, p_level: int, p_room: int) -> void:
@@ -131,6 +133,8 @@ func _build_rig() -> void:
 		"yeti": _style_override = "fur"
 		"brute": _style_override = "stone"
 		"frostwraith", "wisp": _style_override = "ice"
+	if def.has("style"):
+		_style_override = String(def["style"])
 	match _kind:
 		"husk", "shieldbearer":
 			var bone := Color(0.72, 0.68, 0.62)
@@ -204,6 +208,56 @@ func _build_rig() -> void:
 			_mk(_arm_r, Vector3(0.28, 0.8, 0.28), Vector3(0, -0.35, 0), stone * 0.9)
 			_mk(_arm_r, Vector3(0.14, 0.14, 1.0), Vector3(0, -0.8, -0.4), Color(0.28, 0.2, 0.15))
 			_mk(_arm_r, Vector3(0.5, 0.5, 0.7), Vector3(0, -0.8, -1.0), stone * 1.1)
+		"hound":
+			var hb: Color = def.get("body", Color(0.3, 0.24, 0.34))
+			_mk(rig, Vector3(0.5, 0.46, 1.0), Vector3(0, 0.62, 0.05), hb)                                   # body
+			_mk(rig, Vector3(0.42, 0.4, 0.46), Vector3(0, 0.8, -0.62), hb * 1.1)                             # head
+			_mk(rig, Vector3(0.24, 0.2, 0.3), Vector3(0, 0.72, -0.92), hb * 0.8)                             # snout
+			_mk(rig, Vector3(0.1, 0.2, 0.08), Vector3(-0.15, 1.08, -0.56), hb * 0.7)                         # ears
+			_mk(rig, Vector3(0.1, 0.2, 0.08), Vector3(0.15, 1.08, -0.56), hb * 0.7)
+			_mk(rig, Vector3(0.08, 0.07, 0.05), Vector3(-0.11, 0.86, -0.86), glow, 3.0)                      # eyes
+			_mk(rig, Vector3(0.08, 0.07, 0.05), Vector3(0.11, 0.86, -0.86), glow, 3.0)
+			_mk(rig, Vector3(0.06, 0.1, 0.05), Vector3(-0.08, 0.6, -1.06), Color(0.95, 0.92, 0.85), 0.0, "bone")  # fangs
+			_mk(rig, Vector3(0.06, 0.1, 0.05), Vector3(0.08, 0.6, -1.06), Color(0.95, 0.92, 0.85), 0.0, "bone")
+			_mk(rig, Vector3(0.1, 0.1, 0.55), Vector3(0, 0.86, 0.72), hb * 0.8).rotation.x = 0.5               # tail
+			for i in 4:
+				_mk(rig, Vector3(0.1, 0.12, 0.12), Vector3(0, 0.9, -0.3 + 0.24 * float(i)), glow, 1.2)       # glowing back spines
+			_leg_l = _limb(rig, Vector3(0, 0.46, 0)); _leg_r = _limb(rig, Vector3(0, 0.46, 0))
+			_mk(_leg_l, Vector3(0.15, 0.46, 0.17), Vector3(-0.2, -0.23, -0.36), hb * 0.75)
+			_mk(_leg_l, Vector3(0.15, 0.46, 0.17), Vector3(0.2, -0.23, 0.42), hb * 0.75)
+			_mk(_leg_r, Vector3(0.15, 0.46, 0.17), Vector3(0.2, -0.23, -0.36), hb * 0.75)
+			_mk(_leg_r, Vector3(0.15, 0.46, 0.17), Vector3(-0.2, -0.23, 0.42), hb * 0.75)
+		"bat":
+			var bb: Color = def.get("body", Color(0.26, 0.2, 0.32))
+			_mk(rig, Vector3(0.34, 0.32, 0.44), Vector3(0, 0, 0), bb)                                        # body
+			_mk(rig, Vector3(0.3, 0.28, 0.28), Vector3(0, 0.08, -0.3), bb * 1.15)                            # head
+			_mk(rig, Vector3(0.08, 0.18, 0.06), Vector3(-0.1, 0.3, -0.3), bb * 0.8)                          # ears
+			_mk(rig, Vector3(0.08, 0.18, 0.06), Vector3(0.1, 0.3, -0.3), bb * 0.8)
+			_mk(rig, Vector3(0.07, 0.06, 0.04), Vector3(-0.08, 0.1, -0.45), glow, 3.0)                       # eyes
+			_mk(rig, Vector3(0.07, 0.06, 0.04), Vector3(0.08, 0.1, -0.45), glow, 3.0)
+			_mk(rig, Vector3(0.05, 0.08, 0.04), Vector3(-0.05, -0.04, -0.45), Color(0.95, 0.92, 0.85), 0.0, "bone")   # fangs
+			_mk(rig, Vector3(0.05, 0.08, 0.04), Vector3(0.05, -0.04, -0.45), Color(0.95, 0.92, 0.85), 0.0, "bone")
+			_mk(rig, Vector3(0.1, 0.08, 0.3), Vector3(0, -0.04, 0.34), bb * 0.8)                              # tail
+			for sx in [-1.0, 1.0]:
+				var wing := _limb(rig, Vector3(sx * 0.17, 0.08, 0.02))
+				_mk(wing, Vector3(0.5, 0.04, 0.42), Vector3(sx * 0.25, 0, 0.0), bb * 0.9)
+				_mk(wing, Vector3(0.4, 0.04, 0.3), Vector3(sx * 0.66, 0, 0.06), bb * 0.75)
+				_mk(wing, Vector3(0.5, 0.045, 0.05), Vector3(sx * 0.3, 0.01, -0.2), glow * 0.6, 0.6)         # glowing wing bone
+				_wings.append({"n": wing, "s": sx})
+		"slime":
+			var sb: Color = def.get("body", Color(0.26, 0.7, 0.4))
+			_squash = _limb(rig, Vector3.ZERO)
+			_mk(_squash, Vector3(0.95, 0.62, 0.95), Vector3(0, 0.33, 0), sb)                                 # body
+			_mk(_squash, Vector3(0.62, 0.3, 0.62), Vector3(0, 0.76, 0), sb * 1.12)                           # top blob
+			_mk(_squash, Vector3(0.3, 0.2, 0.3), Vector3(-0.3, 0.9, 0.1), sb * 1.2)
+			_mk(_squash, Vector3(0.16, 0.2, 0.05), Vector3(-0.18, 0.55, -0.49), Color(1, 1, 1), 2.0)         # eyes
+			_mk(_squash, Vector3(0.16, 0.2, 0.05), Vector3(0.18, 0.55, -0.49), Color(1, 1, 1), 2.0)
+			_mk(_squash, Vector3(0.08, 0.1, 0.05), Vector3(-0.18, 0.54, -0.52), glow, 3.0)
+			_mk(_squash, Vector3(0.08, 0.1, 0.05), Vector3(0.18, 0.54, -0.52), glow, 3.0)
+			_mk(_squash, Vector3(0.3, 0.05, 0.05), Vector3(0, 0.34, -0.49), Color(0.05, 0.1, 0.06))          # mouth
+			for i in 3:
+				_mk(_squash, Vector3(0.12, 0.12, 0.12), Vector3(-0.2 + 0.2 * float(i), 0.25 + 0.12 * float(i % 2), 0.2), glow, 1.4)   # glowing bits inside
+			_mk(_squash, Vector3(1.1, 0.06, 1.1), Vector3(0, 0.04, 0), sb * 0.7)                              # puddle skirt
 	_dress(glow)
 	_set_visible_rig(false)
 
@@ -314,7 +368,7 @@ func _physics_process(delta: float) -> void:
 			_enter(S.CHASE)
 	velocity = _knock
 	_knock = _knock.move_toward(Vector3.ZERO, 22.0 * delta)
-	if state != S.STUN:
+	if state != S.STUN and not VCTester.on("freeze_ai"):
 		_update_ai(delta)
 	_separate(delta)
 	velocity.y = 0.0
@@ -329,6 +383,55 @@ func _enter(s: int) -> void:
 	if s != S.WINDUP and _tele >= 0:
 		world.fx.cancel(_tele)
 		_tele = -1
+
+## Nearest pet that is closer than the player (and close by): melee enemies go for it first.
+func _focus_pet() -> Node3D:
+	if world.get("pets") == null:
+		return null
+	var best: Node3D = null
+	var best_d: float = Vector2(world.player.global_position.x - global_position.x, world.player.global_position.z - global_position.z).length()
+	for pt in world.pets:
+		if not is_instance_valid(pt) or pt.dead:
+			continue
+		var d := Vector2(pt.global_position.x - global_position.x, pt.global_position.z - global_position.z).length()
+		if d < best_d and d < 7.0:
+			best_d = d
+			best = pt
+	return best
+
+func _focus_pos() -> Vector3:
+	var pt := _focus_pet()
+	return pt.global_position if pt != null else world.player.global_position
+
+func _focus_vec() -> Vector3:
+	var v: Vector3 = _focus_pos() - global_position
+	v.y = 0.0
+	return v
+
+## Pets standing in an attack get hurt as well.
+func _hurt_pets_cone(reach: float, arc_deg: float, amount: float) -> void:
+	if world.get("pets") == null:
+		return
+	for pt in world.pets:
+		if not is_instance_valid(pt) or pt.dead:
+			continue
+		var pv: Vector3 = pt.global_position - global_position
+		pv.y = 0.0
+		var d := pv.length()
+		if d <= reach + pt.hit_radius:
+			var ang := rad_to_deg(_forward().angle_to(pv.normalized())) if d > 0.05 else 0.0
+			if ang <= arc_deg * 0.5 + 10.0:
+				pt.take_damage(amount, global_position)
+
+func _hurt_pets_circle(center: Vector3, radius: float, amount: float) -> void:
+	if world.get("pets") == null:
+		return
+	for pt in world.pets:
+		if not is_instance_valid(pt) or pt.dead:
+			continue
+		var d := Vector2(pt.global_position.x - center.x, pt.global_position.z - center.z).length()
+		if d <= radius + pt.hit_radius:
+			pt.take_damage(amount, center)
 
 func _player_vec() -> Vector3:
 	var v: Vector3 = world.player.global_position - global_position
@@ -359,14 +462,14 @@ func _speed() -> float:
 	return float(def["speed"]) * speed_mult
 
 func _ai_melee(delta: float) -> void:
-	var pv := _player_vec()
+	var pv := _focus_vec()
 	var d := pv.length()
 	var reach: float = float(def["reach"])
 	match state:
 		S.CHASE:
 			_face(pv, 9.0, delta)
 			if d > reach * 0.8:
-				_move_toward(world.player.global_position, _speed(), delta)
+				_move_toward(_focus_pos(), _speed(), delta)
 			if d <= reach * 0.95 and _cd <= 0.0:
 				_begin_windup()
 		S.WINDUP:
@@ -399,6 +502,7 @@ func _strike_cone(reach: float, arc_deg: float, amount: float) -> void:
 		var ang := rad_to_deg(_forward().angle_to(pv.normalized())) if d > 0.05 else 0.0
 		if ang <= arc_deg * 0.5 + 10.0:
 			pl.take_damage(amount, global_position)
+	_hurt_pets_cone(reach, arc_deg, amount)
 
 func _ai_ranged(delta: float) -> void:
 	var pv := _player_vec()
@@ -484,6 +588,7 @@ func _explode() -> void:
 	var pl = world.player
 	if _player_vec().length() <= blast + pl.hit_radius:
 		pl.take_damage(dmg, global_position)
+	_hurt_pets_circle(global_position, blast, dmg)
 	for b in world.breakables.duplicate():
 		if is_instance_valid(b) and b.is_alive() and b.global_position.distance_to(global_position) <= blast + 0.8:
 			b.take_hit(40.0, global_position)
@@ -529,14 +634,14 @@ func _ai_dasher(delta: float) -> void:
 				_enter(S.CHASE)
 
 func _ai_slam(delta: float) -> void:
-	var pv := _player_vec()
+	var pv := _focus_vec()
 	var d := pv.length()
 	var reach: float = float(def["reach"])
 	match state:
 		S.CHASE:
 			_face(pv, 5.0, delta)
 			if d > reach * 0.7:
-				_move_toward(world.player.global_position, _speed(), delta)
+				_move_toward(_focus_pos(), _speed(), delta)
 			if d <= reach and _cd <= 0.0:
 				_enter(S.WINDUP)
 				var c := global_position + _forward() * 1.8
@@ -565,6 +670,7 @@ func _slam_hit(center: Vector3, radius: float, amount: float, knock: float) -> v
 	var d := Vector2(pl.global_position.x - center.x, pl.global_position.z - center.z).length()
 	if d <= radius + pl.hit_radius:
 		pl.take_damage(amount, center)
+	_hurt_pets_circle(center, radius, amount)
 
 # ---------------------------------------------------------------- movement
 func _move_toward(target: Vector3, speed: float, delta: float) -> void:
@@ -733,6 +839,12 @@ func _animate(delta: float) -> void:
 		return
 	var spd := Vector2(velocity.x, velocity.z).length()
 	var swing := sin(_anim_t * (7.0 + spd * 1.6)) * clampf(spd / 3.0, 0.0, 1.0) * 0.8
+	for wg in _wings:
+		(wg["n"] as Node3D).rotation.z = float(wg["s"]) * sin(_anim_t * 17.0) * 0.7
+	if _squash != null:
+		var sq := sin(_anim_t * 3.2)
+		var wind := clampf(_t / maxf(float(def.get("windup", 0.6)), 0.1), 0.0, 1.0) if state == S.WINDUP else 0.0
+		_squash.scale = Vector3(1.0 + 0.07 * sq + 0.25 * wind, 1.0 - 0.09 * sq - 0.35 * wind, 1.0 + 0.07 * sq + 0.25 * wind)
 	rig.position.y = _hover + (sin(_anim_t * 2.4) * 0.12 if _hover > 0.0 else absf(swing) * 0.05)
 	if _leg_l != null:
 		_leg_l.rotation.x = swing

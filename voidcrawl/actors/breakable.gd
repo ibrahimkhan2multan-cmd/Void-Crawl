@@ -31,7 +31,7 @@ func setup(p_kind: String, p_hp: float, radius: float) -> void:
 	else:
 		VCMats.part(_body, Vector3(1.1, 0.9, 1.1), Vector3(0, 0.45, 0), Color(0.42, 0.3, 0.2))
 		VCMats.part(_body, Vector3(1.16, 0.12, 1.16), Vector3(0, 0.9, 0), Color(0.3, 0.22, 0.16))
-		VCMats.part(_body, Vector3(0.12, 0.92, 1.18), Vector3(0, 0.46, 0), Color(0.25, 0.2, 0.25))
+		VCMats.part(_body, Vector3(0.12, 0.88, 1.18), Vector3(0, 0.46, 0), Color(0.25, 0.2, 0.25))
 	# body collision so the hero cannot walk through crates
 	var sb := StaticBody3D.new()
 	sb.collision_layer = VCDefs.L_PROP

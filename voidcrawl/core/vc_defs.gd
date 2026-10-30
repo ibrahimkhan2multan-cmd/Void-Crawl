@@ -19,23 +19,29 @@ const TILE := 2.0          # metres per dungeon tile
 const WALL_H := 2.6        # metres
 
 # --- Items -----------------------------------------------------------------
-enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY }
-const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
+enum Rarity { COMMON, UNCOMMON, RARE, EPIC, LEGENDARY, MYTHIC, VOIDBORN }
+const RARITY_MAX := 6
+const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic", "Voidborn"]
 const RARITY_COLORS := [
 	Color(0.78, 0.78, 0.84),
 	Color(0.36, 0.88, 0.50),
 	Color(0.38, 0.58, 1.00),
 	Color(0.74, 0.34, 1.00),
 	Color(1.00, 0.66, 0.18),
+	Color(1.00, 0.26, 0.40),
+	Color(0.35, 1.00, 0.90),
 ]
-const RARITY_WEIGHTS := [58.0, 26.0, 11.0, 4.0, 1.0]
-const RARITY_STAT_MULT := [1.0, 1.15, 1.35, 1.65, 2.05]
-const RARITY_AFFIX_COUNT := [0, 1, 2, 3, 4]
-const RARITY_SELL := [4, 10, 28, 80, 240]
+# Mythic and Voidborn are deep-dungeon rarities: they only roll from item level 8 / 14 upwards (see VCItems.roll_rarity).
+const RARITY_WEIGHTS := [58.0, 26.0, 11.0, 4.0, 1.0, 0.45, 0.12]
+const RARITY_STAT_MULT := [1.0, 1.15, 1.35, 1.65, 2.05, 2.6, 3.3]
+const RARITY_AFFIX_COUNT := [0, 1, 2, 3, 4, 5, 6]
+const RARITY_SELL := [4, 10, 28, 80, 240, 700, 1800]
+const RARITY_MIN_ILVL := [1, 1, 1, 1, 1, 8, 14]
 
-enum Slot { WEAPON, HELM, ARMOR, TRINKET, BOOTS }
-const SLOT_NAMES := ["Weapon", "Helm", "Armor", "Trinket", "Boots"]
-const SLOT_COUNT := 5
+# LEGS is appended last so older saves (which key equipment by slot number) keep working.
+enum Slot { WEAPON, HELM, ARMOR, TRINKET, BOOTS, LEGS }
+const SLOT_NAMES := ["Weapon", "Helm", "Armor", "Trinket", "Boots", "Leggings"]
+const SLOT_COUNT := 6
 
 # --- UI palette (black + purple) --------------------------------------------
 const COL_BG := Color("07040d")

@@ -3,9 +3,12 @@ extends RefCounted
 ## Persistent character: level, XP, attributes, inventory, equipment, coins.
 
 const MAX_LEVEL := 20
-const INV_CAP := 36
-const MAX_BOMBS := 5
-const MAX_POTIONS := 3
+const INV_CAP := 36                  # base backpack size (see inv_cap() for the upgraded value)
+const MAX_BOMBS := 5                 # base bomb capacity (see max_bombs())
+const MAX_POTIONS := 3               # base potion capacity (see max_potions())
+const BASE_PERK_SLOTS := 3
+const HARD_INV_CAP := 120
+const MAX_PET_LEVEL := 10
 
 var level: int = 1
 var xp: int = 0
@@ -23,6 +26,14 @@ var mod_stash: Array = []            # items whose mod is off/missing; restored 
 var perks_owned: Array = []          # perk ids bought
 var perks_active: Array = []         # perk ids slotted (max VCPerks.SLOTS)
 var redeemed: Array = []             # promo codes already used (normalised)
+var upgrades: Dictionary = {}        # VCUpgrades id -> level
+var auto_rarities: Array = []        # rarity numbers that are auto-removed on pickup
+var auto_mode := "sell"              # "sell" (pays coins) or "delete"
+var auto_keep_upgrades := true       # never auto-remove an item that beats what you wear
+var pets: Dictionary = {}            # pet species id -> level (1..MAX_PET_LEVEL)
+var pets_active: Array = []          # species ids that follow you
+var eggs: Dictionary = {}            # egg tier id -> count owned
+var pet_feed := true                 # pets may eat your potions to heal
 
 static func new_game() -> VCProfile:
 	var p := VCProfile.new()
@@ -35,6 +46,26 @@ static func new_game() -> VCProfile:
 	blade["name"] = "Ashen Blade"
 	p.equipment[VCDefs.Slot.WEAPON] = blade
 	return p
+
+# ---- capacities (base + upgrades) ----
+func inv_cap() -> int:
+	return mini(INV_CAP + VCUpgrades.level(self, "backpack") * int(VCUpgrades.DEFS["backpack"]["per"]), HARD_INV_CAP)
+
+func max_potions() -> int:
+	return MAX_POTIONS + VCUpgrades.level(self, "potion_belt")
+
+func max_bombs() -> int:
+	return MAX_BOMBS + VCUpgrades.level(self, "bomb_pouch")
+
+func perk_slots() -> int:
+	return BASE_PERK_SLOTS + VCUpgrades.level(self, "perk_slots")
+
+func pet_slots() -> int:
+	return 1 + VCUpgrades.level(self, "kennel")
+
+## Fraction of max health one potion restores.
+func potion_heal_frac() -> float:
+	return 0.5 + 0.01 * float(VCUpgrades.level(self, "potion_potency") * int(VCUpgrades.DEFS["potion_potency"]["per"]))
 
 func alloc_uid() -> int:
 	var u := next_uid
@@ -69,10 +100,49 @@ func spend_point(attr: String) -> bool:
 	return true
 
 func add_item(item: Dictionary) -> bool:
-	if item.is_empty() or inventory.size() >= INV_CAP:
+	if item.is_empty() or inventory.size() >= inv_cap():
 		return false
 	inventory.append(item)
 	return true
+
+## True when this item is covered by the auto-delete filter. Set pieces, unique/lore items are never touched.
+func should_auto_remove(item: Dictionary) -> bool:
+	if item.is_empty() or auto_rarities.is_empty():
+		return false
+	if not auto_rarities.has(int(item.get("rarity", 0))):
+		return false
+	if item.has("set") or item.has("lore"):
+		return false
+	var b: Dictionary = VCItems.BASES.get(String(item.get("base", "")), {})
+	if bool(b.get("unique", false)):
+		return false
+	if auto_keep_upgrades:
+		var cur: Dictionary = equipment.get(int(item.get("slot", 0)), {})
+		if VCItems.score(item) > VCItems.score(cur) + 0.5:
+			return false
+	return true
+
+func toggle_auto_rarity(r: int) -> void:
+	if auto_rarities.has(r):
+		auto_rarities.erase(r)
+	else:
+		auto_rarities.append(r)
+		auto_rarities.sort()
+
+## Remove every backpack item the filter covers. Returns {"count": n, "coins": n}.
+func sweep_auto() -> Dictionary:
+	var n := 0
+	var gained := 0
+	var i := inventory.size() - 1
+	while i >= 0:
+		if should_auto_remove(inventory[i]):
+			if auto_mode == "sell":
+				gained += VCItems.sell_value(inventory[i])
+			inventory.remove_at(i)
+			n += 1
+		i -= 1
+	coins += gained
+	return {"count": n, "coins": gained}
 
 ## Equip an item from inventory (by index). The previously equipped item returns to inventory.
 func equip_from_inventory(index: int) -> bool:
@@ -89,7 +159,7 @@ func equip_from_inventory(index: int) -> bool:
 
 func unequip(slot: int) -> bool:
 	var old: Dictionary = equipment.get(slot, {})
-	if old.is_empty() or inventory.size() >= INV_CAP:
+	if old.is_empty() or inventory.size() >= inv_cap():
 		return false
 	equipment.erase(slot)
 	inventory.append(old)
@@ -119,8 +189,8 @@ func toggle_perk(id: String) -> String:
 	for a in perks_active:
 		if VCPerks.DEFS.has(String(a)):
 			live += 1
-	if live >= VCPerks.SLOTS:
-		return "All %d perk slots are full - unequip one first." % VCPerks.SLOTS
+	if live >= perk_slots():
+		return "All %d perk slots are full - unequip one first." % perk_slots()
 	perks_active.append(id)
 	return ""
 
@@ -135,9 +205,12 @@ func sell_item(index: int) -> int:
 ## All derived combat stats. This is what the Player actually reads.
 func derived() -> Dictionary:
 	var t := VCItems.totals(equipment)
-	var pt := VCPerks.totals(perks_active)
+	var pt := VCPerks.totals(perks_active, perk_slots())
 	for pk in pt:
 		t[pk] = float(t.get(pk, 0.0)) + float(pt[pk])
+	var pet_t := VCPets.totals(self)
+	for pk2 in pet_t:
+		t[pk2] = float(t.get(pk2, 0.0)) + float(pet_t[pk2])
 	var lvl_b := float(level - 1)
 	var str_ := float(attrs["str"])
 	var vit := float(attrs["vit"])
@@ -164,6 +237,7 @@ func derived() -> Dictionary:
 	d["coin_mult"] = 1.0 + float(t["coin"]) / 100.0
 	d["regen_bonus"] = float(t["regen"]) / 100.0 + vit * 0.03
 	var avg := (float(t["dmg_min"]) + float(t["dmg_max"])) * 0.5
+	VCTester.apply(d)
 	d["power"] = int(round(avg * float(d["dmg_mult"]) * (1.0 + float(d["crit"])) / maxf(float(t["interval"]), 0.1) + float(d["max_hp"]) / 10.0 + float(d["armor"])))
 	return d
 
@@ -207,7 +281,7 @@ func reconcile_mod_items() -> Dictionary:
 	var left: Array = []
 	for raw in mod_stash:
 		var clean := VCItems.sanitize(raw)
-		if clean.is_empty() or inventory.size() >= INV_CAP:
+		if clean.is_empty() or inventory.size() >= inv_cap():
 			left.append(raw)
 		else:
 			inventory.append(clean)
@@ -224,6 +298,8 @@ func to_dict() -> Dictionary:
 		"coins": coins, "potions": potions, "bombs": bombs, "inventory": inventory.duplicate(true),
 		"equipment": eq, "completed": completed.duplicate(), "stats": stats.duplicate(),
 		"next_uid": next_uid, "redeemed": redeemed.duplicate(), "perks_owned": perks_owned.duplicate(), "perks_active": perks_active.duplicate(), "mod_stash": mod_stash.duplicate(true),
+		"upgrades": upgrades.duplicate(), "auto_rarities": auto_rarities.duplicate(), "auto_mode": auto_mode, "auto_keep_upgrades": auto_keep_upgrades,
+		"pets": pets.duplicate(), "pets_active": pets_active.duplicate(), "eggs": eggs.duplicate(), "pet_feed": pet_feed,
 	}
 
 static func from_dict(d: Dictionary) -> VCProfile:
@@ -235,8 +311,31 @@ static func from_dict(d: Dictionary) -> VCProfile:
 	for k in VCDefs.ATTR_IDS:
 		p.attrs[k] = maxi(int(a.get(k, 0)), 0)
 	p.coins = maxi(int(d.get("coins", 0)), 0)
-	p.potions = clampi(int(d.get("potions", MAX_POTIONS)), 0, MAX_POTIONS)
-	p.bombs = clampi(int(d.get("bombs", 3)), 0, MAX_BOMBS)
+	var up: Dictionary = d.get("upgrades", {})
+	for uid in VCUpgrades.DEFS:
+		if up.has(uid):
+			p.upgrades[uid] = clampi(int(up[uid]), 0, VCUpgrades.max_level(uid))
+	p.potions = clampi(int(d.get("potions", MAX_POTIONS)), 0, p.max_potions())
+	p.bombs = clampi(int(d.get("bombs", 3)), 0, p.max_bombs())
+	for ar in d.get("auto_rarities", []):
+		var ari := clampi(int(ar), 0, VCDefs.RARITY_MAX)
+		if not p.auto_rarities.has(ari):
+			p.auto_rarities.append(ari)
+	p.auto_rarities.sort()
+	p.auto_mode = "delete" if String(d.get("auto_mode", "sell")) == "delete" else "sell"
+	p.auto_keep_upgrades = bool(d.get("auto_keep_upgrades", true))
+	var pd: Dictionary = d.get("pets", {})
+	for pid in pd:
+		if VCPets.SPECIES.has(String(pid)):
+			p.pets[String(pid)] = clampi(int(pd[pid]), 1, MAX_PET_LEVEL)
+	for pa2 in d.get("pets_active", []):
+		if p.pets.has(String(pa2)) and not p.pets_active.has(String(pa2)) and p.pets_active.size() < p.pet_slots():
+			p.pets_active.append(String(pa2))
+	var ed: Dictionary = d.get("eggs", {})
+	for eid in ed:
+		if VCPets.EGGS.has(String(eid)):
+			p.eggs[String(eid)] = clampi(int(ed[eid]), 0, 999)
+	p.pet_feed = bool(d.get("pet_feed", true))
 	for raw in d.get("inventory", []):
 		if raw is Dictionary:
 			var it := VCItems.sanitize(raw)
@@ -265,7 +364,7 @@ static func from_dict(d: Dictionary) -> VCProfile:
 		if not p.perks_owned.has(String(po)) and p.perks_owned.size() < 80:
 			p.perks_owned.append(String(po))
 	for pa in d.get("perks_active", []):
-		if p.perks_owned.has(String(pa)) and not p.perks_active.has(String(pa)) and p.perks_active.size() < VCPerks.SLOTS:
+		if p.perks_owned.has(String(pa)) and not p.perks_active.has(String(pa)) and p.perks_active.size() < p.perk_slots():
 			p.perks_active.append(String(pa))
 	for rc in d.get("redeemed", []):
 		p.redeemed.append(String(rc))

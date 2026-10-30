@@ -64,7 +64,7 @@ var _coll: CollisionShape3D
 var rig: Node3D
 var _torso: MeshInstance3D
 var _head: MeshInstance3D
-var _hood: MeshInstance3D
+var _hood_grp: Node3D
 var _arm_l: Node3D
 var _arm_r: Node3D
 var _leg_l: Node3D
@@ -170,19 +170,27 @@ func _build_rig() -> void:
 	_mk(rig, Vector3(0.14, 0.18, 0.12), Vector3(0.36, 0.6, -0.04), Color(0.4, 0.28, 0.2), 0.0, "leather")  # hip pouch
 	_cape = _mk(rig, Vector3(0.58, 0.9, 0.08), Vector3(0, 0.95, 0.24), Color(0.12, 0.62, 0.7))
 	_head = _mk(rig, Vector3(0.42, 0.42, 0.42), Vector3(0, 1.58, 0), skin, 0.0, "skin")
-	_hood = _mk(rig, Vector3(0.5, 0.5, 0.5), Vector3(0, 1.62, 0.05), Color(0.3, 0.2, 0.5))
-	_mk(rig, Vector3(0.14, 0.2, 0.14), Vector3(0, 1.94, 0.18), Color(0.3, 0.2, 0.5))           # hood tip
-	_mk(rig, Vector3(0.44, 0.1, 0.06), Vector3(0, 1.78, -0.22), Color(0.2, 0.13, 0.35))       # hood brim
+	# hood: separate pieces around the head (never a box that encloses the face, which z-fought with the skin)
+	_hood_grp = Node3D.new()
+	_hood_grp.name = "Hood"
+	rig.add_child(_hood_grp)
+	var hc := Color(0.3, 0.2, 0.5)
+	_mk(_hood_grp, Vector3(0.6, 0.52, 0.1), Vector3(0, 1.62, 0.27), hc)                    # back
+	_mk(_hood_grp, Vector3(0.1, 0.5, 0.5), Vector3(-0.27, 1.6, 0.04), hc * 0.92)           # left side
+	_mk(_hood_grp, Vector3(0.1, 0.5, 0.5), Vector3(0.27, 1.6, 0.04), hc * 0.92)            # right side
+	_mk(_hood_grp, Vector3(0.66, 0.1, 0.66), Vector3(0, 1.86, 0.04), hc * 1.08)            # top
+	_mk(_hood_grp, Vector3(0.46, 0.09, 0.06), Vector3(0, 1.77, -0.24), Color(0.2, 0.13, 0.35))   # brow band (hairline)
+	_mk(_hood_grp, Vector3(0.14, 0.2, 0.14), Vector3(0, 2.02, 0.2), hc)                    # hood tip
 	_mk(rig, Vector3(0.09, 0.09, 0.04), Vector3(-0.1, 1.58, -0.24), Color(1.0, 1.0, 1.0), 1.5)    # eyes: white
 	_mk(rig, Vector3(0.09, 0.09, 0.04), Vector3(0.1, 1.58, -0.24), Color(1.0, 1.0, 1.0), 1.5)
 	_mk(rig, Vector3(0.05, 0.06, 0.045), Vector3(-0.1, 1.58, -0.255), Color(0.55, 0.3, 1.0), 2.4)  # pupils
 	_mk(rig, Vector3(0.05, 0.06, 0.045), Vector3(0.1, 1.58, -0.255), Color(0.55, 0.3, 1.0), 2.4)
 	_mk(rig, Vector3(0.12, 0.03, 0.04), Vector3(0, 1.47, -0.24), Color(0.5, 0.3, 0.3))        # mouth
 	_helm_part = _mk(rig, Vector3(0.5, 0.2, 0.5), Vector3(0, 1.84, 0.02), Color(0.6, 0.58, 0.68))
-	_mk(rig, Vector3(0.3, 0.14, 0.4), Vector3(-0.4, 1.34, 0), Color(0.7, 0.68, 0.82), 0.0, "plate")  # pauldrons
-	_mk(rig, Vector3(0.3, 0.14, 0.4), Vector3(0.4, 1.34, 0), Color(0.7, 0.68, 0.82), 0.0, "plate")
-	_mk(rig, Vector3(0.14, 0.08, 0.3), Vector3(-0.44, 1.43, 0), gold, 0.5)
-	_mk(rig, Vector3(0.14, 0.08, 0.3), Vector3(0.44, 1.43, 0), gold, 0.5)
+	_mk(rig, Vector3(0.3, 0.14, 0.44), Vector3(-0.4, 1.35, 0), Color(0.7, 0.68, 0.82), 0.0, "plate")  # pauldrons
+	_mk(rig, Vector3(0.3, 0.14, 0.44), Vector3(0.4, 1.35, 0), Color(0.7, 0.68, 0.82), 0.0, "plate")
+	_mk(rig, Vector3(0.14, 0.08, 0.3), Vector3(-0.44, 1.44, 0), gold, 0.5)
+	_mk(rig, Vector3(0.14, 0.08, 0.3), Vector3(0.44, 1.44, 0), gold, 0.5)
 	_mk(rig, Vector3(0.2, 0.2, 0.06), Vector3(0, 1.05, -0.2), Color(0.3, 0.95, 1.0), 2.0)      # chest gem
 	_mk(rig, Vector3(0.28, 0.28, 0.03), Vector3(0, 1.05, -0.19), gold, 0.5, "plate")           # gem setting
 	_mk(rig, Vector3(0.66, 0.1, 0.4), Vector3(0, 1.36, 0), Color(0.12, 0.62, 0.7))            # scarf
@@ -319,7 +327,7 @@ func refresh_visuals() -> void:
 		var ac := VCItems.base_color(arm).lerp(VCDefs.rarity_color(int(arm["rarity"])), 0.25)
 		_torso.material_override = VCMats.solid(ac, 0.2 if int(arm["rarity"]) >= 3 else 0.0)
 	var helm: Dictionary = profile.equipment.get(VCDefs.Slot.HELM, {})
-	_helm_part.visible = not helm.is_empty()
+	_helm_part.visible = false      # worn helms are drawn by VCArmorFx; this plain cap overlapped them (z-fight)
 	if not helm.is_empty():
 		_helm_part.material_override = VCMats.solid(VCItems.base_color(helm), 0.3 if int(helm["rarity"]) >= 3 else 0.0)
 	var boots: Dictionary = profile.equipment.get(VCDefs.Slot.BOOTS, {})
@@ -346,6 +354,14 @@ func _physics_process(delta: float) -> void:
 	potion_cd = maxf(0.0, potion_cd - delta)
 	bomb_cd = maxf(0.0, bomb_cd - delta)
 	attack_cd = maxf(0.0, attack_cd - delta)
+	if VCTester.on("no_cd"):
+		dodge_cd = 0.0
+		nova_cd = 0.0
+		bomb_cd = 0.0
+		potion_cd = 0.0
+	if VCTester.on("inf_items"):
+		profile.potions = profile.max_potions()
+		profile.bombs = profile.max_bombs()
 	invuln = maxf(0.0, invuln - delta)
 	_buffered_attack = maxf(0.0, _buffered_attack - delta)
 	if combo_timer > 0.0:
@@ -563,7 +579,7 @@ func _targets_in_cone(reach: float, arc_deg: float) -> Array:
 func hit_target(target: Node, mult: float, knock: float) -> float:
 	var lo: float = float(stats["dmg_min"])
 	var hi: float = float(stats["dmg_max"])
-	var dmg := randf_range(lo, hi) * float(stats["dmg_mult"]) * mult
+	var dmg := randf_range(lo, hi) * float(stats["dmg_mult"]) * mult * VCTester.hit_mult()
 	var crit := randf() < float(stats["crit"])
 	if crit:
 		dmg *= CRIT_MULT
@@ -719,7 +735,7 @@ func _try_potion() -> void:
 		return
 	profile.potions -= 1
 	potion_cd = POTION_CD
-	var amt := float(max_hp) * 0.5
+	var amt := float(max_hp) * profile.potion_heal_frac()
 	_heal_pool += amt
 	world.fx.number(global_position, "+%d" % int(amt), VCDefs.COL_GOOD, false)
 	world.fx.burst(global_position + Vector3(0, 1.0, 0), VCDefs.COL_GOOD, 14, 3.0, 0.9)
@@ -736,7 +752,7 @@ func heal(amount: float, silent: bool = false) -> void:
 
 # --------------------------------------------------------------- damage
 func take_damage(amount: float, from_pos: Vector3, ignore_armor: bool = false) -> bool:
-	if state == S.DEAD or invuln > 0.0 or god_mode:
+	if state == S.DEAD or invuln > 0.0 or god_mode or VCTester.on("god"):
 		return false
 	var armor: float = float(stats["armor"])
 	var red := 0.0 if ignore_armor else armor / (armor + 45.0)

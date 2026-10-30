@@ -455,8 +455,8 @@ func _build_flora() -> void:
 						_add(_fprop_chunks, o + Vector3(sx * 0.06, 0.22, -0.1).rotated(Vector3.UP, q * TAU), Vector3(0.06, 0.07, 0.04), _pr(Color(0.05, 0.04, 0.06)), Vector3(0, q * TAU, 0))
 				count += 1
 			elif r < 0.14 and (mossy or theme == "void"):
-				# damp stain / shallow puddle
-				_add(_fprop_chunks, wp + Vector3(0, 0.012, 0), Vector3(0.7 + 0.5 * q, 0.02, 0.6 + 0.5 * _hf(x, y, 5)), _pr(Color(0.1, 0.14, 0.24)), Vector3(0, q * TAU, 0))
+				# loose flagstone: a slightly raised, slightly darker slab (the old flat blue "puddle" read as a hole)
+				_add(_fprop_chunks, wp + Vector3(0, 0.03, 0), Vector3(0.62 + 0.3 * q, 0.06, 0.62 + 0.3 * _hf(x, y, 5)), _pr(base * 0.82), Vector3(0, (q - 0.5) * 0.5, 0))
 			elif r < 0.18 and (theme == "crypt" or theme == "cavern" or theme == "overgrown"):
 				# glowing mushrooms
 				var mc := Color(0.35, 0.9, 1.0) if q < 0.5 else Color(0.8, 0.4, 1.0)
@@ -484,7 +484,10 @@ func _build_flora() -> void:
 					_add(_glow_chunks, wp + Vector3(0, 0.03, 0), Vector3(1.3, 0.03, 0.07), Color(1.0, 0.4, 0.08), Vector3(0, _hf(x, y, 6) * TAU, 0))
 					_add(_glow_chunks, wp + Vector3(0.3, 0.03, 0.2), Vector3(0.6, 0.03, 0.06), Color(1.0, 0.55, 0.12), Vector3(0, _hf(x, y, 7) * TAU, 0))
 				else:
-					_add(_fprop_chunks, o + Vector3(0, 0.05, 0), Vector3(0.9, 0.1, 0.8), _pr(Color(0.12, 0.1, 0.1)), Vector3(0, q * TAU, 0))
+					# cinders and charred stone (a single flat black slab looked like a hole in the floor)
+					for k in 5:
+						var cz := 0.1 + 0.14 * _hf(x, y, 440 + k)
+						_add(_fprop_chunks, o + Vector3((_hf(x, y, 450 + k) - 0.5) * 0.9, cz * 0.4, (_hf(x, y, 460 + k) - 0.5) * 0.9), Vector3(cz, cz * 0.6, cz * 1.2), _pr(Color(0.3, 0.24, 0.22) * (0.75 + 0.5 * _hf(x, y, 470 + k))), Vector3(0.1, _hf(x, y, 480 + k) * TAU, 0.15))
 			elif r < 0.17 and frosty:
 				# frost crystals
 				var fc := Color(0.5, 0.9, 1.0)
@@ -551,12 +554,6 @@ func _build_runes() -> void:
 				var dd := Vector2(x - c.x, y - c.y).length()
 				if (dd > 8.6 and dd < 9.5) or dd < 1.0 or (absf(dd - 4.5) < 0.5 and (x + y) % 2 == 0):
 					_add(_glow_chunks, data.tile_to_world(Vector2i(x, y)) + Vector3(0, 0.02, 0), Vector3(1.5, 0.03, 1.5), Color(0.42, 0.15, 0.8))
-	for cp in data.checkpoints:
-		var ct: Vector2i = cp["tile"]
-		if cp["id"] == "cp_start":
-			continue
-		for dv in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-			_add(_glow_chunks, data.tile_to_world(ct + dv) + Vector3(0, 0.02, 0), Vector3(1.4, 0.03, 1.4), Color(0.35, 0.8, 1.0) * 0.8)
 
 # ------------------------------------------------------------------- secrets
 func _build_secrets() -> void:

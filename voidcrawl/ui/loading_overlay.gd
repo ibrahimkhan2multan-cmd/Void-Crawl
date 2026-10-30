@@ -6,7 +6,7 @@ const TIPS := [
 	"Telegraphs fill red before every enemy attack. Dodge-roll through them.",
 	"Cracked, glowing walls hide secret rooms. Strike them to break through.",
 	"Higher rarity gear carries more affixes. Compare before you equip.",
-	"Shrines restore health and potions, and save your place in the dungeon.",
+	"Clearing a room saves a checkpoint automatically. Rest rooms also restore health and potions.",
 	"The Void Nova stuns and breaks crates. Time it for crowds.",
 	"Sprint by pushing the joystick all the way to its rim.",
 ]

@@ -54,6 +54,12 @@ func _run() -> void:
 	if _suite_filter == "content":
 		await load("res://voidcrawl/tests/test_content.gd").run(self)
 		return
+	if _suite_filter == "zfight":
+		await load("res://voidcrawl/tests/test_zfight.gd").run(self)
+		return
+	if _suite_filter == "v08":
+		await load("res://voidcrawl/tests/test_v08.gd").run(self)
+		return
 	if _suite_filter == "soak":
 		await load("res://voidcrawl/tests/soak.gd").run(self)
 		return

@@ -7,6 +7,7 @@ signal open_pack
 signal open_howto
 signal open_settings
 signal quit_to_menu
+signal open_tester
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -31,6 +32,11 @@ func _ready() -> void:
 		var b := VCUI.button(String(it[0]), Vector2(380, 58), 26)
 		b.pressed.connect(_pressed.bind(String(it[1])))
 		v.add_child(b)
+	if VCTester.unlocked():
+		var tb := VCUI.button("TESTER", Vector2(380, 50), 22)
+		tb.add_theme_color_override("font_color", Color(0.4, 1.0, 0.8))
+		tb.pressed.connect(func(): open_tester.emit())
+		v.add_child(tb)
 	# buttons added by mods (each opens a message or a draggable menu window)
 	var mb := VCMods.menu_buttons("pause")
 	if not mb.is_empty():

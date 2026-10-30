@@ -54,6 +54,9 @@ func _clear() -> void:
 	_ring = null
 	_cape_len = 1.0
 	_cape_col = Color(0.12, 0.62, 0.7)
+	var hood: Node3D = player.get("_hood_grp")
+	if hood != null:
+		hood.visible = true
 
 ## Rebuild from the current equipment. Emits tier_changed when a 2-/4-piece tier is reached or lost.
 func refresh(equipment: Dictionary) -> void:
@@ -70,9 +73,16 @@ func refresh(equipment: Dictionary) -> void:
 			VCDefs.Slot.ARMOR: _build_armor(sid)
 			VCDefs.Slot.BOOTS: _build_boots(sid)
 			VCDefs.Slot.TRINKET: _build_trinket(sid)
+			VCDefs.Slot.LEGS: _build_legs(sid)
+	# a worn helm replaces the hood (they overlapped and flickered)
+	var hood: Node3D = player.get("_hood_grp")
+	if hood != null and equipment.has(VCDefs.Slot.HELM) and not (equipment[VCDefs.Slot.HELM] as Dictionary).is_empty():
+		hood.visible = false
 	for sid in new_counts:
 		if int(new_counts[sid]) >= 4:
 			_build_aura(sid)
+		if int(new_counts[sid]) >= 5:
+			_build_full_set(sid)
 	# cape style
 	var cape: MeshInstance3D = player.get("_cape")
 	if cape != null:
@@ -82,7 +92,7 @@ func refresh(equipment: Dictionary) -> void:
 	for sid in new_counts:
 		var n: int = new_counts[sid]
 		var before: int = int(counts.get(sid, 0))
-		if (n >= 2 and before < 2) or (n >= 4 and before < 4):
+		if (n >= 2 and before < 2) or (n >= 4 and before < 4) or (n >= 5 and before < 5):
 			tier_changed.emit(sid, n)
 	counts = new_counts
 
@@ -101,16 +111,16 @@ func _build_helm(sid: String) -> void:
 		"gloomguard":
 			_b(_gear, Vector3(0.56, 0.3, 0.56), Vector3(0, 1.8, 0.02), c)
 			_b(_gear, Vector3(0.1, 0.34, 0.5), Vector3(0, 2.08, 0.02), g, 1.2)               # crest/plume
-			_b(_gear, Vector3(0.3, 0.08, 0.04), Vector3(0, 1.64, -0.27), g, 2.4)             # visor slit
-			_b(_gear, Vector3(0.08, 0.3, 0.3), Vector3(-0.3, 1.62, -0.05), c * 0.85)         # cheek guards
-			_b(_gear, Vector3(0.08, 0.3, 0.3), Vector3(0.3, 1.62, -0.05), c * 0.85)
+			_b(_gear, Vector3(0.3, 0.08, 0.04), Vector3(0, 1.64, -0.285), g, 2.4)             # visor slit
+			_b(_gear, Vector3(0.08, 0.3, 0.3), Vector3(-0.31, 1.64, -0.05), c * 0.85)         # cheek guards
+			_b(_gear, Vector3(0.08, 0.3, 0.3), Vector3(0.31, 1.64, -0.05), c * 0.85)
 		"voidwalker":
 			_b(_gear, Vector3(0.54, 0.16, 0.54), Vector3(0, 1.86, 0.02), c)
 			for i in 5:
 				var a := TAU * float(i) / 5.0
 				var s := _b(_gear, Vector3(0.1, 0.34, 0.1), Vector3(cos(a) * 0.24, 2.1, sin(a) * 0.24), g, 2.0, Vector3(0, a, 0.15))
 				_pulse_parts.append(s)
-			_b(_gear, Vector3(0.3, 0.08, 0.04), Vector3(0, 1.62, -0.25), g, 3.0)
+			_b(_gear, Vector3(0.3, 0.08, 0.04), Vector3(0, 1.62, -0.265), g, 3.0)
 		"emberlord":
 			_b(_gear, Vector3(0.56, 0.26, 0.56), Vector3(0, 1.8, 0.02), c)
 			for sx in [-1.0, 1.0]:
@@ -123,7 +133,7 @@ func _build_helm(sid: String) -> void:
 				var a := TAU * float(i) / 7.0
 				var h := 0.26 + 0.12 * float(i % 3)
 				_b(_gear, Vector3(0.09, h, 0.09), Vector3(cos(a) * 0.23, 1.95 + h * 0.5, sin(a) * 0.23), Color(0.85, 0.96, 1.0), 0.8, Vector3(sin(a) * 0.2, 0, -cos(a) * 0.2))
-			_b(_gear, Vector3(0.3, 0.08, 0.04), Vector3(0, 1.62, -0.25), g, 2.6)
+			_b(_gear, Vector3(0.3, 0.08, 0.04), Vector3(0, 1.62, -0.265), g, 2.6)
 		"friendship":
 			_b(_gear, Vector3(0.54, 0.22, 0.54), Vector3(0, 1.82, 0.02), c)
 			for sx in [-1.0, 1.0]:
@@ -134,15 +144,15 @@ func _build_helm(sid: String) -> void:
 			# mod-made sets get a generic crested helm in their colours
 			_b(_gear, Vector3(0.56, 0.26, 0.56), Vector3(0, 1.8, 0.02), c)
 			_b(_gear, Vector3(0.12, 0.3, 0.46), Vector3(0, 2.04, 0.02), g, 1.4)
-			_b(_gear, Vector3(0.3, 0.08, 0.04), Vector3(0, 1.64, -0.27), g, 2.4)
+			_b(_gear, Vector3(0.3, 0.08, 0.04), Vector3(0, 1.64, -0.285), g, 2.4)
 
 func _build_armor(sid: String) -> void:
 	var c := _col(sid)
 	var g := _glow(sid)
 	# big pauldrons
 	for sx in [-1.0, 1.0]:
-		_b(_gear, Vector3(0.42, 0.2, 0.5), Vector3(sx * 0.46, 1.4, 0), c * 1.15)
-		_b(_gear, Vector3(0.44, 0.05, 0.52), Vector3(sx * 0.46, 1.5, 0), g, 1.0)
+		_b(_gear, Vector3(0.42, 0.2, 0.52), Vector3(sx * 0.47, 1.4, 0), c * 1.15)
+		_b(_gear, Vector3(0.46, 0.05, 0.56), Vector3(sx * 0.47, 1.525, 0), g, 1.0)
 	# chest emblem
 	_b(_gear, Vector3(0.22, 0.22, 0.05), Vector3(0, 1.08, -0.2), g, 2.4, Vector3(0, 0, PI * 0.25))
 	match sid:
@@ -178,7 +188,7 @@ func _build_boots(sid: String) -> void:
 		var leg: Node3D = player.get("_leg_l") if sx < 0 else player.get("_leg_r")
 		if leg == null:
 			continue
-		var greave := VCMats.part(leg, Vector3(0.3, 0.3, 0.32), Vector3(0, -0.42, 0), c * 1.1)
+		var greave := VCMats.part(leg, Vector3(0.31, 0.3, 0.35), Vector3(0, -0.42, 0), c * 1.1)
 		var strip := VCMats.part(leg, Vector3(0.32, 0.05, 0.34), Vector3(0, -0.28, 0), g, 1.6)
 		greave.name = "SetGreave"
 		strip.name = "SetGreave"
@@ -186,6 +196,60 @@ func _build_boots(sid: String) -> void:
 		_leg_parts.append(strip)
 		_gear.set_meta("greaves", true)
 		_pulse_parts.append(strip)
+
+## Leggings: thigh plates on each leg + a hip skirt (faulds) on the hero. Each set gets its own flourish.
+func _build_legs(sid: String) -> void:
+	var c := _col(sid)
+	var g := _glow(sid)
+	for sx in [-1.0, 1.0]:
+		var leg: Node3D = player.get("_leg_l") if sx < 0 else player.get("_leg_r")
+		if leg == null:
+			continue
+		var plate_col := c * 1.05
+		if sid == "friendship":
+			plate_col = Color(0.95, 0.8, 0.35) if sx < 0 else Color(0.4, 0.85, 0.95)
+		var cu := VCMats.part(leg, Vector3(0.3, 0.26, 0.32), Vector3(0, -0.14, 0), plate_col, 0.0, "", "plate")
+		var trim := VCMats.part(leg, Vector3(0.34, 0.03, 0.36), Vector3(0, -0.03, 0), g, 1.4)
+		_leg_parts.append(cu)
+		_leg_parts.append(trim)
+		_pulse_parts.append(trim)
+		trim.name = "SetLegTrim"
+		match sid:
+			"gloomguard":
+				_leg_parts.append(VCMats.part(leg, Vector3(0.08, 0.14, 0.1), Vector3(0, -0.3, -0.2), g, 1.2))            # knee spike
+			"voidwalker":
+				_leg_parts.append(VCMats.part(leg, Vector3(0.1, 0.1, 0.1), Vector3(0, -0.31, -0.2), g, 2.4))             # knee gem
+			"emberlord":
+				var fl := VCMats.part(leg, Vector3(0.12, 0.18, 0.1), Vector3(0, -0.3, -0.2), g, 3.0)                     # knee flame
+				_leg_parts.append(fl)
+				_flames.append({"node": fl, "base": fl.position.y, "ph": randf() * TAU})
+				_leg_parts.append(VCMats.part(leg, Vector3(0.1, 0.2, 0.1), Vector3(sx * 0.19, -0.2, 0.0), Color(0.88, 0.8, 0.66), 0.0, "", "bone"))   # side horn
+			"frostwarden":
+				for k in 2:
+					_leg_parts.append(VCMats.part(leg, Vector3(0.06, 0.18 + 0.06 * float(k), 0.06), Vector3(sx * 0.2, -0.12 - 0.08 * float(k), -0.06 + 0.12 * float(k)), Color(0.88, 0.97, 1.0), 0.8, "", "ice"))
+			"friendship":
+				_leg_parts.append(VCMats.part(leg, Vector3(0.12, 0.12, 0.06), Vector3(0, -0.3, -0.19), Color(1.0, 0.45, 0.75) if sx < 0 else Color(0.4, 0.95, 1.0), 2.2))   # heart gem
+			_:
+				_leg_parts.append(VCMats.part(leg, Vector3(0.12, 0.12, 0.08), Vector3(0, -0.3, -0.19), g, 1.6))
+	# hip skirt on the hero
+	match sid:
+		"voidwalker":
+			_b(_gear, Vector3(0.72, 0.34, 0.44), Vector3(0, 0.44, 0), c * 0.9)
+			_b(_gear, Vector3(0.76, 0.04, 0.48), Vector3(0, 0.27, 0), g, 1.8)
+		"friendship":
+			_b(_gear, Vector3(0.74, 0.2, 0.46), Vector3(0, 0.52, 0), Color(0.95, 0.8, 0.35))
+			_b(_gear, Vector3(0.2, 0.26, 0.04), Vector3(0, 0.4, -0.24), Color(0.4, 0.9, 0.95), 0.8)
+		_:
+			_b(_gear, Vector3(0.74, 0.2, 0.46), Vector3(0, 0.52, 0), c * 0.95)
+			_b(_gear, Vector3(0.2, 0.26, 0.04), Vector3(0, 0.4, -0.24), c * 1.15)
+			_b(_gear, Vector3(0.78, 0.03, 0.5), Vector3(0, 0.41, 0), g, 1.2)
+
+## Wearing all five pieces of a set: a rising ring of sparks around the hero.
+func _build_full_set(sid: String) -> void:
+	var g := _glow(sid)
+	for i in 6:
+		var m := _b(_aura, Vector3(0.07, 0.22, 0.07), Vector3.ZERO, g, 3.2)
+		_orbiters.append({"node": m, "r": 1.25, "h": 0.2 + 0.4 * float(i), "speed": -2.0 - 0.2 * float(i), "phase": TAU * float(i) / 6.0, "bob": 0.08})
 
 func _build_trinket(sid: String) -> void:
 	var g := _glow(sid)
@@ -273,6 +337,7 @@ func _build_worn(slot: int, it: Dictionary) -> void:
 		VCDefs.Slot.ARMOR: _worn_armor(c, rc, rar, v)
 		VCDefs.Slot.BOOTS: _worn_boots(c, rc, rar, v)
 		VCDefs.Slot.TRINKET: _worn_trinket(c, rc, rar, v)
+		VCDefs.Slot.LEGS: _worn_legs(c, rc, rar, v)
 
 func _worn_helm(c: Color, rc: Color, rar: int, v: int) -> void:
 	_b(_gear, Vector3(0.56, 0.28, 0.56), Vector3(0, 1.84, 0.02), c).material_override = VCMats.solid(c, 0.0, false, "plate")
@@ -302,7 +367,7 @@ func _worn_armor(c: Color, rc: Color, rar: int, v: int) -> void:
 	_b(_gear, Vector3(0.22, 0.22, 0.05), Vector3(0, 1.12, -0.22), rc, 0.6 + 0.4 * float(rar), Vector3(0, 0, PI * 0.25))   # chest emblem
 	if rar >= 1:
 		for sx in [-1.0, 1.0]:
-			_b(_gear, Vector3(0.4, 0.18, 0.44), Vector3(sx * 0.46, 1.42, 0), c * 1.1)          # pauldrons
+			_b(_gear, Vector3(0.4, 0.18, 0.46), Vector3(sx * 0.47, 1.43, 0), c * 1.1)          # pauldrons
 	match v:
 		0:   # tassets
 			for sx in [-1.0, 1.0]:
@@ -324,7 +389,7 @@ func _worn_boots(c: Color, rc: Color, rar: int, v: int) -> void:
 		var leg: Node3D = player.get("_leg_l") if sx < 0 else player.get("_leg_r")
 		if leg == null:
 			continue
-		var sh := VCMats.part(leg, Vector3(0.3, 0.3, 0.3), Vector3(0, -0.38, 0), c * 1.05, 0.0, "", "plate")
+		var sh := VCMats.part(leg, Vector3(0.31, 0.3, 0.33), Vector3(0, -0.38, 0), c * 1.05, 0.0, "", "plate")
 		_leg_parts.append(sh)
 		var toe := VCMats.part(leg, Vector3(0.3, 0.1, 0.14), Vector3(0, -0.6, -0.26), c * 0.85, 0.0, "", "plate")
 		_leg_parts.append(toe)
@@ -336,6 +401,29 @@ func _worn_boots(c: Color, rc: Color, rar: int, v: int) -> void:
 			_leg_parts.append(VCMats.part(leg, Vector3(0.32, 0.06, 0.32), Vector3(0, -0.24, 0), rc, 0.8 if rar >= 2 else 0.0))
 		if rar >= 3:
 			_leg_parts.append(VCMats.part(leg, Vector3(0.32, 0.04, 0.32), Vector3(0, -0.52, 0), rc, 1.6))
+
+func _worn_legs(c: Color, rc: Color, rar: int, v: int) -> void:
+	for sx in [-1.0, 1.0]:
+		var leg: Node3D = player.get("_leg_l") if sx < 0 else player.get("_leg_r")
+		if leg == null:
+			continue
+		_leg_parts.append(VCMats.part(leg, Vector3(0.3, 0.26, 0.32), Vector3(0, -0.14, 0), c * 1.02, 0.0, "", "plate" if v != 2 else "leather"))
+		match v:
+			0:   # knee caps
+				_leg_parts.append(VCMats.part(leg, Vector3(0.2, 0.12, 0.08), Vector3(0, -0.29, -0.19), c * 1.2, 0.0, "", "plate"))
+			1:   # side spikes
+				_leg_parts.append(VCMats.part(leg, Vector3(0.08, 0.2, 0.08), Vector3(sx * 0.2, -0.14, 0.0), Color(0.85, 0.85, 0.9), 0.0, "", "metal"))
+			2:   # leather straps
+				_leg_parts.append(VCMats.part(leg, Vector3(0.33, 0.05, 0.35), Vector3(0, -0.1, 0), Color(0.34, 0.24, 0.16), 0.0, "", "leather"))
+				_leg_parts.append(VCMats.part(leg, Vector3(0.33, 0.05, 0.35), Vector3(0, -0.2, 0), Color(0.34, 0.24, 0.16), 0.0, "", "leather"))
+			3:   # sash tails
+				_leg_parts.append(VCMats.part(leg, Vector3(0.14, 0.3, 0.04), Vector3(0, -0.16, -0.18), rc, 0.4))
+		if rar >= 2:
+			var tr := VCMats.part(leg, Vector3(0.34, 0.03, 0.36), Vector3(0, -0.03, 0), rc, 1.0 + 0.3 * float(rar - 2))
+			_leg_parts.append(tr)
+	_b(_gear, Vector3(0.74, 0.18, 0.46), Vector3(0, 0.53, 0), c * 0.92).material_override = VCMats.solid(c * 0.92, 0.0, false, "plate" if v != 2 else "leather")
+	if rar >= 3:
+		_b(_gear, Vector3(0.78, 0.03, 0.5), Vector3(0, 0.43, 0), rc, 1.6 + 0.3 * float(rar - 3))
 
 func _worn_trinket(c: Color, rc: Color, rar: int, v: int) -> void:
 	# a pendant on the chest and, for better rarities, a charm that floats beside the hero

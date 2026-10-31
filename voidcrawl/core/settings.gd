@@ -18,6 +18,7 @@ const DEFAULTS := {
 	"btn_scale": 1.0, "btn_opacity": 0.8, "left_handed": false,
 	"cam_sens": 1.0, "cam_zoom": 1.0,
 	"tester_unlocked": false,
+	"tester_freeze": true,
 	"haptics": true, "damage_numbers": true, "screen_shake": 1.0,
 }
 

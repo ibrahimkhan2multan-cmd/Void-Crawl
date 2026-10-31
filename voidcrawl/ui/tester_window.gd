@@ -23,6 +23,7 @@ var _gen_slot := -1
 var _spawn_last := ""
 var _scroll: ScrollContainer
 var _min := false
+var _freeze_btn: Button
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -44,6 +45,15 @@ func _ready() -> void:
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.mouse_filter = Control.MOUSE_FILTER_PASS
 	bar.add_child(title)
+	if world != null:
+		_freeze_btn = VCUI.button("", Vector2(112, 40), 15)
+		_freeze_btn.pressed.connect(func():
+			VCSettings.set_value("tester_freeze", not bool(VCSettings.get_value("tester_freeze")))
+			VCSettings.save_settings()
+			world.apply_tester_freeze()
+			_update_freeze_btn())
+		bar.add_child(_freeze_btn)
+		_update_freeze_btn()
 	var mn := VCUI.button("_", Vector2(48, 40), 20)
 	mn.pressed.connect(func():
 		_min = not _min
@@ -77,6 +87,10 @@ func _ready() -> void:
 	_status.name = "Status"
 	v.add_child(_status)
 	_set_tab("player")
+
+func _update_freeze_btn() -> void:
+	if _freeze_btn != null:
+		_freeze_btn.text = "FREEZE: ON" if bool(VCSettings.get_value("tester_freeze")) else "FREEZE: OFF"
 
 func _apply_min() -> void:
 	_scroll.visible = not _min

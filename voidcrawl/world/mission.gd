@@ -31,6 +31,7 @@ var fx: VCFx
 var hud: VCHud
 var touch: VCTouchControls
 var enemies: Array = []
+var _tester_froze := false
 var tester_win: VCTesterWindow = null
 var pets: Array = []                    # VCPet companions
 var breakables: Array = []
@@ -1483,16 +1484,37 @@ func toggle_tester(force_open: bool = false) -> void:
 			return
 		tester_win.get_parent().queue_free()
 		tester_win = null
+		if _tester_froze:
+			_tester_froze = false
+			if overlay_open == "":
+				get_tree().paused = false
 		return
 	var layer := CanvasLayer.new()
 	layer.layer = 28
 	layer.name = "TesterLayer"
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(layer)
 	tester_win = VCTesterWindow.new()
 	tester_win.world = self
 	layer.add_child(tester_win)
 	VCUI.fit_to_viewport(tester_win)
 	tester_win.closed.connect(func(): toggle_tester())
+	apply_tester_freeze()
+
+## While the tester window is open the game freezes (so the hero does not walk off while you read),
+## unless the FREEZE switch in the window is turned off. Never touches a pause the pause menu owns.
+func apply_tester_freeze() -> void:
+	if tester_win == null or not is_instance_valid(tester_win) or overlay_open != "":
+		return
+	var want := bool(VCSettings.get_value("tester_freeze"))
+	if want and not _tester_froze:
+		_tester_froze = true
+		get_tree().paused = true
+		touch.release_all()
+		VCInput.reset()
+	elif not want and _tester_froze:
+		_tester_froze = false
+		get_tree().paused = false
 
 func _swap_overlay(kind: String) -> void:
 	_close_overlay_node()
@@ -1502,6 +1524,8 @@ func _swap_overlay(kind: String) -> void:
 func close_overlay() -> void:
 	_close_overlay_node()
 	get_tree().paused = false
+	_tester_froze = false
+	apply_tester_freeze()
 	VCSettings.save_settings()
 	touch.apply_settings()
 	VCInput.reset()

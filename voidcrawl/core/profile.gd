@@ -31,6 +31,7 @@ var auto_rarities: Array = []        # rarity numbers that are auto-removed on p
 var auto_mode := "sell"              # "sell" (pays coins) or "delete"
 var auto_keep_upgrades := true       # never auto-remove an item that beats what you wear
 var pets: Dictionary = {}            # pet species id -> level (1..MAX_PET_LEVEL)
+var pets_parked: Dictionary = {}     # pets of a mod that is switched off; they come back with it
 var pets_active: Array = []          # species ids that follow you
 var eggs: Dictionary = {}            # egg tier id -> count owned
 var pet_feed := true                 # pets may eat your potions to heal
@@ -287,7 +288,24 @@ func reconcile_mod_items() -> Dictionary:
 			inventory.append(clean)
 			restored += 1
 	mod_stash = left
+	reconcile_mod_pets()
 	return {"parked": parked, "restored": restored}
+
+## Pets from a mod that is off are put away (never lost); pets whose mod is back return.
+func reconcile_mod_pets() -> void:
+	for id in pets.keys():
+		if not VCPets.SPECIES.has(String(id)):
+			pets_parked[id] = pets[id]
+			pets.erase(id)
+	for id in pets_parked.keys():
+		if VCPets.SPECIES.has(String(id)):
+			pets[id] = maxi(int(pets.get(id, 0)), int(pets_parked[id]))
+			pets_parked.erase(id)
+	var keep: Array = []
+	for id in pets_active:
+		if pets.has(String(id)) and keep.size() < pet_slots():
+			keep.append(id)
+	pets_active = keep
 
 func to_dict() -> Dictionary:
 	var eq := {}
@@ -299,7 +317,7 @@ func to_dict() -> Dictionary:
 		"equipment": eq, "completed": completed.duplicate(), "stats": stats.duplicate(),
 		"next_uid": next_uid, "redeemed": redeemed.duplicate(), "perks_owned": perks_owned.duplicate(), "perks_active": perks_active.duplicate(), "mod_stash": mod_stash.duplicate(true),
 		"upgrades": upgrades.duplicate(), "auto_rarities": auto_rarities.duplicate(), "auto_mode": auto_mode, "auto_keep_upgrades": auto_keep_upgrades,
-		"pets": pets.duplicate(), "pets_active": pets_active.duplicate(), "eggs": eggs.duplicate(), "pet_feed": pet_feed,
+		"pets": pets.duplicate(), "pets_parked": pets_parked.duplicate(), "pets_active": pets_active.duplicate(), "eggs": eggs.duplicate(), "pet_feed": pet_feed,
 	}
 
 static func from_dict(d: Dictionary) -> VCProfile:
@@ -328,6 +346,14 @@ static func from_dict(d: Dictionary) -> VCProfile:
 	for pid in pd:
 		if VCPets.SPECIES.has(String(pid)):
 			p.pets[String(pid)] = clampi(int(pd[pid]), 1, MAX_PET_LEVEL)
+		else:
+			p.pets_parked[String(pid)] = clampi(int(pd[pid]), 1, MAX_PET_LEVEL)
+	var ppk: Dictionary = d.get("pets_parked", {})
+	for pid in ppk:
+		if VCPets.SPECIES.has(String(pid)):
+			p.pets[String(pid)] = maxi(int(p.pets.get(String(pid), 0)), clampi(int(ppk[pid]), 1, MAX_PET_LEVEL))
+		else:
+			p.pets_parked[String(pid)] = clampi(int(ppk[pid]), 1, MAX_PET_LEVEL)
 	for pa2 in d.get("pets_active", []):
 		if p.pets.has(String(pa2)) and not p.pets_active.has(String(pa2)) and p.pets_active.size() < p.pet_slots():
 			p.pets_active.append(String(pa2))

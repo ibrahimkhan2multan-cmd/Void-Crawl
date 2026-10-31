@@ -394,6 +394,7 @@ static func run_tester(t: Node) -> void:
 	if not m.build_done:
 		return
 	VCSettings.set_value("tester_unlocked", true)
+	VCSettings.set_value("tester_freeze", false)   # (v0.9 freeze is tested in test_v09)
 	m.toggle_tester(true)
 	await GP._frames(t, 5)
 	t.check("the tester window opens in a dungeon", m.tester_win != null and is_instance_valid(m.tester_win))

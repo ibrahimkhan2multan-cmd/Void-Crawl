@@ -23,6 +23,8 @@ const MISSIONS := ["crypt", "forge", "frost", "delve"]
 const MAX_MOBS := 24
 const MAX_LEVELS := 8
 const MAX_PERKS := 24
+const MAX_PETS := 12
+const PET_STYLES := ["quad", "bird", "blob", "imp", "golem", "orb", "drake", "hydra"]
 const MAX_BUTTONS := 6
 const MAX_MENUS := 12
 const MAX_ELEMENTS := 30
@@ -42,6 +44,7 @@ static var _base_mobs: Dictionary = {}
 static var _base_missions: Dictionary = {}
 static var _base_order: Array = []
 static var _base_perks: Dictionary = {}
+static var _base_pets: Dictionary = {}
 static var _disabled: Array = []
 static var _menus: Dictionary = {}       # full menu id -> menu definition (see VCModWindow)
 static var _buttons: Array = []          # button definitions from enabled mods
@@ -57,6 +60,7 @@ static func _snapshot() -> void:
 		_base_missions = VCMissions.DATA.duplicate(true)
 		_base_order = VCMissions.ORDER.duplicate()
 		_base_perks = VCPerks.DEFS.duplicate(true)
+		_base_pets = VCPets.SPECIES.duplicate(true)
 
 static func _load_state() -> void:
 	_disabled = []
@@ -83,6 +87,7 @@ static func load_all() -> void:
 	VCMissions.DATA = _base_missions.duplicate(true)
 	VCMissions.ORDER = _base_order.duplicate()
 	VCPerks.DEFS = _base_perks.duplicate(true)
+	VCPets.SPECIES = _base_pets.duplicate(true)
 	_menus = {}
 	_buttons = []
 	_mob_spawns = []
@@ -118,6 +123,7 @@ static func _info(parsed: Dictionary, path: String) -> Dictionary:
 		"mobs": (parsed.get("mobs", {}) as Dictionary).size(),
 		"levels": (parsed.get("levels", {}) as Dictionary).size(),
 		"perks": (parsed.get("perks", {}) as Dictionary).size(),
+		"pets": (parsed.get("pets", {}) as Dictionary).size(),
 		"buttons": (parsed.get("buttons", {}) as Dictionary).size(),
 		"menus": (parsed.get("menus", {}) as Dictionary).size(),
 		"errors": parsed.get("errors", []),
@@ -144,6 +150,8 @@ static func _apply(parsed: Dictionary) -> void:
 			VCMissions.ORDER.append(id)
 	for id in parsed["perks"]:
 		VCPerks.DEFS[id] = parsed["perks"][id]
+	for id in parsed["pets"]:
+		VCPets.SPECIES[id] = parsed["pets"][id]
 	for id in parsed["menus"]:
 		_menus[id] = parsed["menus"][id]
 	for id in parsed["buttons"]:
@@ -207,7 +215,7 @@ static func install_bytes(bytes: PackedByteArray) -> Dictionary:
 	if not (parsed["errors"] as Array).is_empty():
 		warn = "  (%d entries skipped)" % (parsed["errors"] as Array).size()
 	var bits: Array = []
-	for k in ["items", "sets", "codes", "mobs", "levels", "perks", "buttons", "menus"]:
+	for k in ["items", "sets", "codes", "mobs", "levels", "perks", "pets", "buttons", "menus"]:
 		var c := (parsed[k] as Dictionary).size()
 		if c > 0:
 			bits.append("%d %s" % [c, k])
@@ -265,7 +273,7 @@ static func _read_json(zr: ZIPReader, files: PackedStringArray, prefix: String, 
 	return parsed
 
 static func _parse_zip(path: String) -> Dictionary:
-	var out := {"ok": false, "manifest": {}, "items": {}, "sets": {}, "codes": {}, "mobs": {}, "spawns": [], "levels": {}, "perks": {}, "buttons": {}, "menus": {}, "errors": []}
+	var out := {"ok": false, "manifest": {}, "items": {}, "sets": {}, "codes": {}, "mobs": {}, "spawns": [], "levels": {}, "perks": {}, "pets": {}, "buttons": {}, "menus": {}, "errors": []}
 	var errs: Array = out["errors"]
 	var zr := ZIPReader.new()
 	if zr.open(path) != OK:
@@ -302,7 +310,7 @@ static func _parse_zip(path: String) -> Dictionary:
 	mf["description"] = _clean_text(String(mj.get("description", "")), 160)
 	out["manifest"] = mf
 	var raw := {}
-	var kinds := ["items", "sets", "codes", "mobs", "levels", "perks", "buttons", "menus"]
+	var kinds := ["items", "sets", "codes", "mobs", "levels", "perks", "pets", "buttons", "menus"]
 	for key in kinds:
 		var dst := {}
 		if mj.get(key) is Dictionary:
@@ -371,6 +379,19 @@ static func _parse_zip(path: String) -> Dictionary:
 			errs.append("perk %s: %s" % [String(k), String(rp["error"])])
 		else:
 			perks["%s__%s" % [mid, _clean_id(String(k))]] = rp["perk"]
+	# pets
+	var pets: Dictionary = out["pets"]
+	n = 0
+	for k in raw["pets"]:
+		n += 1
+		if n > MAX_PETS:
+			errs.append("too many pets (max %d)" % MAX_PETS)
+			break
+		var rpt := _build_pet(String(k), raw["pets"][k])
+		if rpt.has("error"):
+			errs.append("pet %s: %s" % [String(k), String(rpt["error"])])
+		else:
+			pets["%s__%s" % [mid, _clean_id(String(k))]] = rpt["pet"]
 	# sets (need the items for slot checks and levels for the drop dungeon)
 	var sets: Dictionary = out["sets"]
 	n = 0
@@ -426,9 +447,9 @@ static func _parse_zip(path: String) -> Dictionary:
 			errs.append("button %s: %s" % [String(k), String(rb["error"])])
 		else:
 			buttons["%s__%s" % [mid, _clean_id(String(k))]] = rb["button"]
-	var total := items.size() + sets.size() + codes.size() + mobs.size() + levels.size() + perks.size() + menus.size() + buttons.size()
+	var total := items.size() + sets.size() + codes.size() + mobs.size() + levels.size() + perks.size() + pets.size() + menus.size() + buttons.size()
 	if total == 0:
-		errs.append("the pack adds nothing (no valid items, sets, codes, mobs, levels, perks, buttons or menus)")
+		errs.append("the pack adds nothing (no valid items, sets, codes, mobs, levels, perks, pets, buttons or menus)")
 		return out
 	out["ok"] = true
 	return out
@@ -740,6 +761,46 @@ static func _build_perk(id: String, spec: Variant) -> Dictionary:
 	return {"perk": {"name": nm, "desc": _clean_text(String(s.get("desc", "")), 70), "cost": int(_num(s.get("cost"), 10, 5000, 200)),
 		"bonus": b, "color": _color(s.get("color"), Color(0.7, 0.5, 1.0))}}
 
+## A pet species. Everything is numbers and colours - the game supplies the body (`style`) and the behaviour.
+static func _build_pet(id: String, spec: Variant) -> Dictionary:
+	if not (spec is Dictionary):
+		return {"error": "must be an object"}
+	if _clean_id(id) == "":
+		return {"error": "bad id"}
+	var s: Dictionary = spec
+	var nm := _clean_text(String(s.get("name", "")), 24)
+	if nm == "":
+		return {"error": "needs a name"}
+	var style := String(s.get("style", "quad")).to_lower()
+	if not PET_STYLES.has(style):
+		return {"error": "style must be one of " + " ".join(PET_STYLES)}
+	var ai := String(s.get("ai", "melee")).to_lower()
+	if ai != "melee" and ai != "ranged":
+		return {"error": "ai must be melee or ranged"}
+	var base := _color(s.get("color"), Color(0.5, 0.4, 0.7))
+	var d := {
+		"name": nm, "rarity": int(_num(s.get("rarity"), 0, VCDefs.RARITY_MAX, 1)), "style": style, "ai": ai,
+		"hp": _num(s.get("hp"), 20, 1000, 100), "dmg": _num(s.get("dmg"), 1, 60, 8),
+		"interval": _num(s.get("interval"), 0.35, 3.0, 1.0),
+		"reach": _num(s.get("reach"), 1.5, 12.0, 1.9 if ai == "melee" else 9.0),
+		"speed": _num(s.get("speed"), 3.0, 8.5, 6.0),
+		"scale": _num(s.get("scale"), 0.55, 1.4, 0.9),
+		"col": base, "col2": _color(s.get("color2"), base.lightened(0.45)), "glow": _color(s.get("glow"), base.lightened(0.7)),
+		"passive": _bonus(s.get("passive")),
+		"blurb": _clean_text(String(s.get("blurb", "")), 80),
+	}
+	if s.has("float"):
+		d["float"] = _num(s.get("float"), 0.0, 1.6, 0.0)
+	if ai == "ranged":
+		d["pierce"] = int(_num(s.get("pierce"), 0, 3, 0))
+		d["fan"] = int(_num(s.get("fan"), 1, 3, 1))
+	# keep a modded pet from out-scaling the legendary ones of the base game
+	var cap := 1.0 + 0.5 * float(int(d["rarity"]))
+	var passive: Dictionary = d["passive"]
+	for k in passive.keys():
+		passive[k] = minf(float(passive[k]), float(BONUS_LIMITS[k]) * 0.4 * cap)
+	return {"pet": d}
+
 static func _build_action(a: Variant, raw_menus: Dictionary, raw_levels: Dictionary, mid: String) -> Dictionary:
 	if not (a is Dictionary):
 		return {"error": "action must be an object like {\"type\": \"message\", \"text\": \"...\"}"}
@@ -830,7 +891,7 @@ static func _build_menu(mid: String, id: String, spec: Variant, raw_menus: Dicti
 # ------------------------------------------------------------------- example
 const EXAMPLE_MOD := {
 	"id": "sunfire", "name": "Sunfire Pack", "version": "1.0", "author": "Infinity Studios",
-	"description": "Example mod: a blazing sword, the Sunborn armour set, new mobs, the Sunken Furnace dungeon, two perks, codes and a draggable Sunfire Hub menu.",
+	"description": "Example mod: a blazing sword, the Sunborn armour set, new mobs, the Sunken Furnace dungeon, two perks, a pet, codes and a draggable Sunfire Hub menu.",
 }
 const EXAMPLE_ITEMS := {
 	"sunfire_blade": {"name": "Sunfire Blade", "slot": "weapon", "kind": "sword", "dmg": [12, 16], "interval": 0.4, "range": 2.8, "arc": 120, "color": "#ffaa33", "drops": true},
@@ -867,6 +928,10 @@ const EXAMPLE_PERKS := {
 	"sunlit": {"name": "Sunlit Edge", "desc": "Blades gleam with borrowed daylight.", "cost": 260, "bonus": {"atk_pct": 8}, "color": "#ffcc55"},
 	"warm_heart": {"name": "Warm Heart", "desc": "A little sunshine for the road.", "cost": 180, "bonus": {"hp": 50, "regen": 20}, "color": "#ff8a5a"},
 }
+const EXAMPLE_PETS := {
+	"ember_cub": {"name": "Ember Cub", "rarity": 2, "style": "quad", "ai": "ranged", "hp": 100, "dmg": 9, "interval": 0.9, "reach": 9, "speed": 6.4,
+		"color": "#c8481e", "color2": "#ffb347", "glow": "#ffcc55", "passive": {"atk_pct": 3, "coin": 4}, "blurb": "A sunbaked cub that spits sparks."},
+}
 const EXAMPLE_MENUS := {
 	"hub": {"title": "Sunfire Hub", "color": "#ffaa33", "width": 360, "x": 0.5, "y": 0.4, "elements": [
 		{"type": "text", "text": "Welcome, wanderer! Level {level}  -  {coins} coins  -  perks {perks}", "size": 19},
@@ -891,7 +956,7 @@ static func write_example_zip(path: String) -> bool:
 	if zp.open(path) != OK:
 		return false
 	for pair in [["mod.json", EXAMPLE_MOD], ["items.json", EXAMPLE_ITEMS], ["sets.json", EXAMPLE_SETS], ["codes.json", EXAMPLE_CODES],
-			["mobs.json", EXAMPLE_MOBS], ["levels.json", EXAMPLE_LEVELS], ["perks.json", EXAMPLE_PERKS], ["menus.json", EXAMPLE_MENUS], ["buttons.json", EXAMPLE_BUTTONS]]:
+			["mobs.json", EXAMPLE_MOBS], ["levels.json", EXAMPLE_LEVELS], ["perks.json", EXAMPLE_PERKS], ["pets.json", EXAMPLE_PETS], ["menus.json", EXAMPLE_MENUS], ["buttons.json", EXAMPLE_BUTTONS]]:
 		zp.start_file(String(pair[0]))
 		zp.write_file(JSON.stringify(pair[1], "  ").to_utf8_buffer())
 		zp.close_file()

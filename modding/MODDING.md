@@ -16,6 +16,7 @@ Everything is validated and clamped; a broken entry is skipped and shown in red 
 | `mobs.json` | **new enemies** (a built-in body reshaped, recoloured and re-tuned) |
 | `levels.json` | **new dungeons** that appear in DUNGEONS, with their own enemies and boss |
 | `perks.json` | **new perks** the player can buy and slot |
+| `pets.json` | **new pets** that can hatch from eggs |
 | `buttons.json` | **buttons** on the main menu and/or the pause menu |
 | `menus.json` | **menu windows** - draggable pop-up windows with text and buttons |
 
@@ -29,7 +30,7 @@ mymod.zip
   buttons.json  menus.json   (all optional)
 ```
 The files may sit inside one folder in the zip. Any of them can alternatively live inside `mod.json` under the same key.
-Limits per mod: zip 4 MB, each file 512 KB, 120 items, 12 sets, 40 codes, 24 mobs, 8 levels, 24 perks, 6 buttons, 12 menus, 30 elements per menu.
+Limits per mod: zip 4 MB, each file 512 KB, 120 items, 12 sets, 40 codes, 24 mobs, 8 levels, 24 perks, 12 pets, 6 buttons, 12 menus, 30 elements per menu.
 
 Every id you invent (items, mobs, levels, perks, menus ...) is automatically prefixed with your mod id (`sunfire__sun_wisp`),
 so mods can never overwrite each other or the base game. Inside your own files just use the short id.
@@ -110,6 +111,20 @@ A mob borrows one of the game's bodies (`model`) so it already has a full animat
 - `unlock`: dungeon that must be completed first: `tutorial crypt forge frost delve` or another level of your pack (default `tutorial`)
 - `recommended_level` 1-30, `xp` 50-8000, `coins` 20-3000 (first-clear rewards)
 The level shows up in **DUNGEONS** after the base ones, and sets with `"mission": "<level id>"` drop there.
+
+## pets.json
+A pet is a companion that follows the player, fights on its own, can be levelled up, and respawns 10 seconds after it falls. Mod pets hatch from the normal eggs by their `rarity`, so a rarity-3 pet joins the pool of other rarity-3 pets. If a mod is switched off its pets are put away (never deleted) and come back when it is turned on again.
+```json
+{ "ember_cub": { "name": "Ember Cub", "rarity": 2, "style": "quad", "ai": "ranged",
+    "hp": 100, "dmg": 9, "interval": 0.9, "reach": 9, "speed": 6.4,
+    "color": "#c8481e", "color2": "#ffb347", "glow": "#ffcc55",
+    "passive": { "atk_pct": 3, "coin": 4 }, "blurb": "A sunbaked cub that spits sparks." } }
+```
+- `style` (the body): `quad bird blob imp golem orb drake hydra`. `ai`: `melee` or `ranged`.
+- `rarity` 0-6 (Common .. Voidborn). `hp` 20-1000, `dmg` 1-60, `interval` 0.35-3 s between attacks, `reach` 1.5-12, `speed` 3-8.5, `scale` 0.55-1.4, `float` 0-1.6 (hover height).
+- Ranged pets may add `pierce` 0-3 and `fan` 1-3 (bolts per shot).
+- `color`, `color2`, `glow`: body, accent and glow colours.
+- `passive`: bonus the player gets while the pet is active (same keys as perks). It is capped by the pet's rarity.
 
 ## perks.json
 Perks are passive bonuses bought with coins in **PERKS** (main menu) and slotted - the player starts with 3 slots and can buy more in UPGRADES.

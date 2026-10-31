@@ -217,6 +217,9 @@ func _build_ui() -> void:
 		col.add_child(b)
 		if String(it[1]) == "play":
 			_play_btn = b
+			VCUI.make_primary(b)
+			b.custom_minimum_size = Vector2(380, 58)
+			b.add_theme_font_size_override("font_size", 29)
 	var row2 := VCUI.hbox(10)
 	col.add_child(row2)
 	var hb := VCUI.button("HOW TO PLAY", Vector2(118, 50), 15)
@@ -319,7 +322,7 @@ func _refresh_info() -> void:
 func _notice(text: String) -> void:
 	var l := VCUI.label(text, 18, Color(1.0, 0.75, 0.5), HORIZONTAL_ALIGNMENT_CENTER)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size = Vector2(620, 0)
+	l.custom_minimum_size = Vector2(540, 0)
 	var p := VCUI.panel(Color(0.12, 0.05, 0.04, 0.95), Color(0.8, 0.4, 0.2))
 	var vb := VCUI.vbox(8)
 	p.add_child(vb)
@@ -331,9 +334,8 @@ func _notice(text: String) -> void:
 		add_child(lay)
 		lay.add_child(VCLogViewer.make()))
 	vb.add_child(cb)
-	p.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	p.position = Vector2(300, 18)
 	_root.add_child(p)
+	p.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 16)
 	var tw := create_tween()
 	tw.tween_interval(40.0)
 	tw.tween_callback(p.queue_free)

@@ -27,7 +27,7 @@ func _ready() -> void:
 	v.custom_minimum_size = Vector2(720, 0)
 	panel.add_child(v)
 	v.add_child(VCUI.label("MODS", 38, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
-	var hint := VCUI.label("Mods add weapons, armour, mobs, dungeons, perks, menu buttons and draggable menus. Import a .zip made for VOIDBORN. Mods cannot run code.", 17, VCDefs.COL_TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	var hint := VCUI.label("Mods add weapons, armour, mobs, dungeons, perks, pets, menu buttons and draggable menus. Import a .zip made for VOIDBORN. Mods cannot run code.", 17, VCDefs.COL_TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(680, 0)
 	v.add_child(hint)
@@ -86,7 +86,7 @@ func _card(m: Dictionary) -> Control:
 		v.add_child(d)
 	if ok:
 		var bits: Array = []
-		for k in ["items", "sets", "codes", "mobs", "levels", "perks", "buttons", "menus"]:
+		for k in ["items", "sets", "codes", "mobs", "levels", "perks", "pets", "buttons", "menus"]:
 			if int(m.get(k, 0)) > 0:
 				bits.append("%d %s" % [int(m[k]), k])
 		var cl := VCUI.label("  -  ".join(bits), 16, VCDefs.COL_VIOLET)

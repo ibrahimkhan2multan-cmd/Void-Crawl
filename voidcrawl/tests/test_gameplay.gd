@@ -37,6 +37,7 @@ static func run(t: Node) -> void:
 	await load("res://voidcrawl/tests/test_content.gd").run(t)
 	await load("res://voidcrawl/tests/test_zfight.gd").run(t)
 	await load("res://voidcrawl/tests/test_v08.gd").run(t)
+	await load("res://voidcrawl/tests/test_v09.gd").run(t)
 
 static func _tp(m: VCMission, pos: Vector3) -> void:
 	m.player.global_position = pos
